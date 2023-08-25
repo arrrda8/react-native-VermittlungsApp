@@ -11,7 +11,6 @@ Bei Neustart werden folgende Codes benötigt:
 
 <code>npx react-native run-android</code>
 
-<<<<<<< HEAD
 Metro Server Cache löschen:
 
 <code>npx react-native start --reset-cache</code>
@@ -24,8 +23,6 @@ Doctor
 
 <code>npx react-native doctor</code>
 
-=======
->>>>>>> parent of f253b75 (v0.1)
 Neues Projekt:
 <code>npx react-native@latest init MeinProjekt</code>
 
@@ -36,7 +33,7 @@ https://github.com/firebase/firebase-ios-sdk
 
 ## Packages
 
-<code>npm install @react-navigation/native @react-navigation/bottom-tabs</code>
+<code>npm install @react-navigation/native @react-navigation/stack @react-navigation/bottom-tabs @react-navigation/drawer</code>
 
 <code>npm install react-native-screens</code>
 
@@ -55,6 +52,11 @@ https://github.com/firebase/firebase-ios-sdk
 <code>npm install @react-native-firebase/app</code>
 
 <code>npm install @react-native-firebase/auth</code>
+
+
+RUBY
+
+<code>rvm install ruby-3.2.1 -C --with-openssl-dir=/opt/local/libexec/openssl11</code>
 
 =======
 >>>>>>> parent of f253b75 (v0.1)

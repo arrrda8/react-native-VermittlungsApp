@@ -50,7 +50,7 @@ https://medium.com/@vimniky/how-to-use-vector-icons-in-your-react-native-project
 
 <code>npm i react-native-modal-datetime-picker</code>
 
-<code>npm install react-native-gesture-handler</code>
+<code>npm install --save react-native-gesture-handler</code>
 
 <code>npm install --save react-native-vector-icons</code>
 

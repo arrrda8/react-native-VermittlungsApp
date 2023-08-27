@@ -58,6 +58,17 @@ RUBY
 
 <code>rvm install ruby-3.2.1 -C --with-openssl-dir=/opt/local/libexec/openssl11</code>
 
+WATCHMAN
+
+<code>watchman watch-del '/Users/erdal.akkoc/Documents/GitHub/react-native-VermittlungsApp/LinkMi' ; watchman watch-project '/Users/erdal.akkoc/Documents/GitHub/react-native-VermittlungsApp/LinkMi'</code>
+
+<code>brew uninstall watchman
+brew install watchman</code>
+
+<code></code>
+
+<code></code>
+
 =======
 >>>>>>> parent of f253b75 (v0.1)
 # To-Do

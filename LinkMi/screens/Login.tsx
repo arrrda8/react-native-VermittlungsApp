@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import auth from '@react-native-firebase/auth';
 
@@ -28,14 +28,53 @@ const Login: React.FC<{ navigation: any }> = ({navigation}) => {
       .signInWithEmailAndPassword(email, password)
       .then(() => {
         console.log('Benutzer angemeldet!');
-        // Hier können Sie den Benutzer z.B. zur Hauptseite weiterleiten
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AppTabs' }],
+        });
       })
       .catch(error => {
         console.error('Fehler bei der Anmeldung: ', error);
-        // Hier können Sie Fehlermeldungen anzeigen, z.B. "Falsches Passwort"
+        Alert.alert(
+          'Fehler',
+          'Login-Daten falsch! Bitte nochmal versuchen',
+          [{ text: 'OK' }],
+          { cancelable: false }
+        );
       });
   };
 
+  const handlePasswordReset = () => {
+    if (!email) {
+      Alert.alert(
+        'Fehler',
+        'Bitte geben Sie Ihre E-Mail-Adresse ein',
+        [{ text: 'OK' }],
+        { cancelable: false }
+      );
+      return;
+    }
+
+    auth()
+      .sendPasswordResetEmail(email)
+      .then(() => {
+        Alert.alert(
+          'E-Mail gesendet',
+          'Eine E-Mail zum Zurücksetzen des Passworts wurde an Ihre E-Mail-Adresse gesendet',
+          [{ text: 'OK' }],
+          { cancelable: false }
+        );
+      })
+      .catch(error => {
+        console.error('Fehler beim Senden der E-Mail: ', error);
+        Alert.alert(
+          'Fehler',
+          'Fehler beim Senden der E-Mail. Bitte versuchen Sie es später erneut',
+          [{ text: 'OK' }],
+          { cancelable: false }
+        );
+      });
+  };
 
   return (
     <View style={styles.container}>
@@ -62,8 +101,12 @@ const Login: React.FC<{ navigation: any }> = ({navigation}) => {
         disabled={!isFormValid()}
         >
         <Text style={styles.buttonText}>Einloggen</Text>
-    </TouchableOpacity>
-
+      </TouchableOpacity>
+      <TouchableOpacity 
+        onPress={handlePasswordReset}
+        >
+        <Text style={styles.forgotPasswordText}>Passwort vergessen?</Text>
+      </TouchableOpacity>
       <View style={styles.divider}>
         <View style={styles.line} />
         <Text>ODER</Text>
@@ -167,6 +210,13 @@ const styles = StyleSheet.create({
     color: 'red',
     marginBottom: 10,
   },  
+  forgotPasswordText: {
+    textAlign: 'center',
+    marginTop: 5,
+    marginBottom: 10,
+    fontSize: 12,
+    color: 'blue',
+  },
 });
 
 export default Login;

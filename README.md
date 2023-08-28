@@ -53,6 +53,8 @@ https://github.com/firebase/firebase-ios-sdk
 
 <code>npm install @react-native-firebase/auth</code>
 
+<code>npm install react-native-reanimated</code>
+
 
 RUBY
 

@@ -18,6 +18,20 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged(user => {
+      if (user && user.emailVerified) {
+        console.log('E-Mail bestätigt!');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AppTabs' }],
+        });
+      }
+    });
+  
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
     if (email && !email.includes('@')) {
       setEmailError('Bitte E-Mail Adresse eingeben');
     } else {
@@ -32,15 +46,31 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, [email, password, confirmPassword]);
 
   const handleSignup = () => {
+    const passwordValidation = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!password.match(passwordValidation)) {
+      setPasswordError('Das Passwort muss mindestens 8 Zeichen lang sein und mindestens 1 Sonderzeichen, 1 Großbuchstaben und 1 Kleinbuchstaben enthalten.');
+      return;
+    }
+
     auth()
       .createUserWithEmailAndPassword(email, password)
-      .then(() => {
+      .then((userCredential) => {
         console.log('Benutzer registriert!');
-        // Hier können Sie den Benutzer z.B. zur Hauptseite weiterleiten
+        userCredential.user.sendEmailVerification()
+          .then(() => {
+            console.log('Bestätigungs-E-Mail gesendet!');
+            // Hier können Sie den Benutzer z.B. zu einer Seite weiterleiten, die anzeigt, dass eine Bestätigungs-E-Mail gesendet wurde
+            navigation.navigate('EmailConfirm');
+          })
+          .catch(error => {
+            console.error('Fehler beim Senden der Bestätigungs-E-Mail: ', error);
+          });
       })
       .catch(error => {
         console.error('Fehler bei der Registrierung: ', error);
-        // Hier können Sie Fehlermeldungen anzeigen, z.B. "E-Mail bereits verwendet"
+        if (error.code === 'auth/email-already-in-use') {
+          setEmailError('E-Mail Adresse wird bereits verwendet.');
+        }
       });
   };
 
@@ -102,6 +132,7 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
         onChangeText={setPassword}
         value={password}
         passwordRules={null}
+        textContentType={'oneTimeCode'}
       />
       <TextInput
         style={styles.input}

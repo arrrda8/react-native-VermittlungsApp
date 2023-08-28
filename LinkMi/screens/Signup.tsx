@@ -9,7 +9,7 @@ import auth from '@react-native-firebase/auth';
 const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [birthDate, setBirthDate] = useState(new Date());
+  const [birthDate, setBirthDate] = useState<Date | null>(null);;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -87,6 +87,14 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
     hideDatePicker();
   };
 
+  const formatDate = (date: Date | null) => {
+    if (!date) return '';
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    return `${day < 10 ? '0' : ''}${day}.${month < 10 ? '0' : ''}${month}.${year}`;
+  };
+
   const isFormValid = () => {
     return firstName && lastName && email && email.includes('@') && password && password === confirmPassword;
   };
@@ -107,7 +115,7 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
         value={lastName}
       />
       <TouchableOpacity onPress={showDatePicker} style={styles.datePicker}>
-        <Text>{birthDate.toDateString()}</Text>
+        <Text>{birthDate ? formatDate(birthDate) : 'Geburtsdatum'}</Text>
       </TouchableOpacity>
       <DateTimePickerModal
         isVisible={isDatePickerVisible}

@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { ScrollView } from 'react-native';
 import auth from '@react-native-firebase/auth';
-
+import firestore from '@react-native-firebase/firestore';
 
 const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [firstName, setFirstName] = useState('');
@@ -27,7 +26,7 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
         });
       }
     });
-  
+
     return unsubscribe;
   }, [navigation]);
 
@@ -45,6 +44,22 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   }, [email, password, confirmPassword]);
 
+  const createProfile = async (userId: string, firstName: string, lastName: string, birthDate: Date, email: string) => {
+    try {
+      await firestore().collection('users').doc(userId).set({
+        firstName,
+        lastName,
+        birthDate: birthDate.toISOString(),
+        email,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+      });
+      console.log('User profile created!');
+    } catch (error) {
+      console.error("Error creating user profile: ", error);
+      throw error;
+    }
+  };
+
   const handleSignup = () => {
     const passwordValidation = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!password.match(passwordValidation)) {
@@ -54,12 +69,20 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
 
     auth()
       .createUserWithEmailAndPassword(email, password)
-      .then((userCredential) => {
+      .then(async (userCredential) => {
         console.log('Benutzer registriert!');
+        const userId = userCredential.user.uid;
+
+        // Profil in Firestore erstellen
+        try {
+          await createProfile(userId, firstName, lastName, birthDate!, email);
+        } catch (error) {
+          console.error("Fehler beim Erstellen des Benutzerprofils: ", error);
+        }
+
         userCredential.user.sendEmailVerification()
           .then(() => {
             console.log('Bestätigungs-E-Mail gesendet!');
-            // Hier können Sie den Benutzer z.B. zu einer Seite weiterleiten, die anzeigt, dass eine Bestätigungs-E-Mail gesendet wurde
             navigation.navigate('EmailConfirm');
           })
           .catch(error => {

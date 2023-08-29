@@ -3,11 +3,10 @@ import { StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
 
-container: {
+  container: {
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: 'blue'
   },
   title: {
     fontSize: 24,
@@ -15,29 +14,14 @@ container: {
     marginBottom: 20,
     textAlign: 'center',
   },
-
   input: {
-    height: 50,
-    borderColor: 'white',
-    borderWidth: 1,
-    marginBottom: 15,
-    padding: 10,
-    borderRadius: 5,
-  },
- datePicker: {
     height: 50,
     borderColor: 'gray',
     borderWidth: 1,
     marginBottom: 15,
     padding: 10,
     borderRadius: 5,
-    justifyContent: 'center',
- },
- contentContainer: {
-  flexGrow: 1,
-  justifyContent: 'center',
-  paddingBottom: 50,
-},
+  },
   button: {
     backgroundColor: '#4CAF50',
     padding: 15,
@@ -79,10 +63,10 @@ container: {
   socialButton: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: 25, // Dies macht den Button rund
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 30,
+    marginHorizontal: 30, // Abstand zwischen den Buttons
   },
   facebookButton: {
     backgroundColor: '#1877F2',
@@ -99,6 +83,13 @@ container: {
     color: 'red',
     marginBottom: 10,
   },  
+  forgotPasswordText: {
+    textAlign: 'center',
+    marginTop: 5,
+    marginBottom: 10,
+    fontSize: 12,
+    color: 'blue',
+  },
 });
 
 export default styles;

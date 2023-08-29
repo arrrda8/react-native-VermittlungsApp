@@ -12,8 +12,8 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		1A66433D5AFAACF6CD56F19E /* Pods_LinkMi_LinkMiTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3017B01A3631C4CEB5D37630 /* Pods_LinkMi_LinkMiTests.framework */; };
-		374A521B2A9901140019DDC5 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 374A521A2A9901140019DDC5 /* GoogleService-Info.plist */; };
 		378B63302A9B73A60054AA23 /* Fonts in Resources */ = {isa = PBXBuildFile; fileRef = 378B632F2A9B73A60054AA23 /* Fonts */; };
+		379037042A9E1BEF00ACE3B7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 379037032A9E1BEF00ACE3B7 /* GoogleService-Info.plist */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		BA0AFE04FF04CBA7E7E3BDCA /* Pods_LinkMi.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9A665AA53A1F07D4BF7125A2 /* Pods_LinkMi.framework */; };
 /* End PBXBuildFile section */
@@ -39,8 +39,8 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = LinkMi/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = LinkMi/main.m; sourceTree = "<group>"; };
 		3017B01A3631C4CEB5D37630 /* Pods_LinkMi_LinkMiTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LinkMi_LinkMiTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		374A521A2A9901140019DDC5 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		378B632F2A9B73A60054AA23 /* Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Fonts; path = "../node_modules/react-native-vector-icons/Fonts"; sourceTree = "<group>"; };
+		379037032A9E1BEF00ACE3B7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = LinkMi/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9A665AA53A1F07D4BF7125A2 /* Pods_LinkMi.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LinkMi.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B304F042152FE689F2D760AA /* Pods-LinkMi.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LinkMi.release.xcconfig"; path = "Target Support Files/Pods-LinkMi/Pods-LinkMi.release.xcconfig"; sourceTree = "<group>"; };
@@ -121,7 +121,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				374A521A2A9901140019DDC5 /* GoogleService-Info.plist */,
+				379037032A9E1BEF00ACE3B7 /* GoogleService-Info.plist */,
 				13B07FAE1A68108700A75B9A /* LinkMi */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* LinkMiTests */,
@@ -250,8 +250,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
+				379037042A9E1BEF00ACE3B7 /* GoogleService-Info.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
-				374A521B2A9901140019DDC5 /* GoogleService-Info.plist in Resources */,
 				378B63302A9B73A60054AA23 /* Fonts in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -622,16 +622,12 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_CFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_CFLAGS = "$(inherited)  ";
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(OTHER_CFLAGS)",
 					"-DFOLLY_NO_CONFIG",
 					"-DFOLLY_MOBILE=1",
 					"-DFOLLY_USE_LIBCPP=1",
-					" ",
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
@@ -699,16 +695,12 @@
 					"\"$(inherited)\"",
 				);
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_CFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_CFLAGS = "$(inherited)  ";
 				OTHER_CPLUSPLUSFLAGS = (
 					"$(OTHER_CFLAGS)",
 					"-DFOLLY_NO_CONFIG",
 					"-DFOLLY_MOBILE=1",
 					"-DFOLLY_USE_LIBCPP=1",
-					" ",
 				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;

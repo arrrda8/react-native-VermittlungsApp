@@ -9,7 +9,7 @@ import Suche from '../screens/Suche';
 const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => (
-  <Tab.Navigator>
+  <Tab.Navigator screenOptions={{ headerShown: false }}>
     <Tab.Screen name="Suche" component={Suche} />
     <Tab.Screen name="Favoriten" component={Favoriten} />
     <Tab.Screen name="AnzeigeErstellen" component={AnzeigeErstellen} />

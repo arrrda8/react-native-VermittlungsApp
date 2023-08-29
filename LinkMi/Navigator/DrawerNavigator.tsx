@@ -8,7 +8,7 @@ const Drawer = createDrawerNavigator();
 
 const DrawerNavigator = () => (
   <Drawer.Navigator initialRouteName="AppTabs">
-    <Drawer.Screen name="AppTabs" component={AppTabs} options={{ title: 'Home' }} />
+    <Drawer.Screen name="AppTabs" component={AppTabs} options={{ title: 'LinkMi' }} />
     <Drawer.Screen name="Logout" component={Logout} />
   </Drawer.Navigator>
 );

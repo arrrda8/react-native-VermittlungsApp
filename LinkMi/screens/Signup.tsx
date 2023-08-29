@@ -51,6 +51,11 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
         lastName,
         birthDate: birthDate.toISOString(),
         email,
+        profilSlogan: '',
+        currentJob: '',
+        industry: '',
+        zipCode: '',
+        city: '',
         createdAt: firestore.FieldValue.serverTimestamp(),
       });
       console.log('User profile created!');

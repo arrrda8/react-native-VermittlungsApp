@@ -1,4 +1,10 @@
 {
   "name": "LinkMi",
-  "displayName": "LinkMi"
+  "displayName": "LinkMi",
+  "expo": {
+    "packagerOpts": {
+      "config": "metro.config.js",
+      "sourceExts": ["js", "jsx", "ts", "tsx", "svg"]
+    }
+  }
 }

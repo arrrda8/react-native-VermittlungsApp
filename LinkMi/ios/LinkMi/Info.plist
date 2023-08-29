@@ -40,9 +40,9 @@
 	<key>NSCameraUsageDescription</key>
 	<string>$(PRODUCT_NAME) möchte Zugriff auf Ihre Kamera</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>$(PRODUCT_NAME) möchte Zugriff auf Ihren Standort</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string></string>
+	<string>$(PRODUCT_NAME) möchte Zugriff auf Ihre Fotos</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>$(PRODUCT_NAME) möchte Zugriff auf Ihre Fotos</string>
 	<key>UIAppFonts</key>

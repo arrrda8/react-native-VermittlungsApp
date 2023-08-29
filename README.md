@@ -61,7 +61,8 @@ https://github.com/firebase/firebase-ios-sdk
 
 <code>npm install @react-native-firebase/firestore</code>
 
-<code>npm install react-native-image-picker</code>
+<code>npm i react-native-image-crop-picker --save</code>
+
 
 
 RUBY
@@ -94,5 +95,6 @@ brew install watchman</code>
 
 - [ ] Logos in iOS nicht erkennbar
 - [ ] Nach Ausloggen kommt ein Fehler in der Konsole, aber nicht in der App.
-- [ ] Nach Klick auf E-Mail Bestätigung -> keine Weiterleitung zum Home Bildschirm 
-- [ ]
+- [x] Nach Klick auf E-Mail Bestätigung -> keine Weiterleitung zum Home Bildschirm 
+- [ ] Geotagging für die Input Felder zipCode, city
+- [ ] Alternative z

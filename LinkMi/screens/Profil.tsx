@@ -2,47 +2,104 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Button, Image, StyleSheet, ScrollView } from 'react-native';
 import { getProfile, updateProfile } from './firebaseFuntions';
 import auth from '@react-native-firebase/auth';
+import storage from '@react-native-firebase/storage';
+import ImagePicker from 'react-native-image-crop-picker';
+import { NavigationProp } from '@react-navigation/native';
 
 interface ProfileData {
   firstName: string;
   lastName: string;
   email: string;
-  birthdate: string;
-  // ... andere Profil-Daten
+  birthDate: string;
+  profilSlogan: string;
+  currentJob: string;
+  industry: string;
+  zipCode: string;
+  city: string;
+  profileImage: string;
+  backgroundImage: string;
 }
 
-const Profile = () => {
+interface ProfileProps {
+  navigation: NavigationProp<any>;
+}
+
+const Profile: React.FC<ProfileProps> = ({ navigation }) => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const userId = auth().currentUser?.uid;
 
-  useEffect(() => {
+  const fetchData = async () => {
     if (!userId) {
       console.error("No user is logged in");
       return;
     }
 
-    const fetchData = async () => {
-      const data = await getProfile(userId);
-      if (data) {
-        setProfileData(data);
-      } else {
-        console.error("No profile data found for user: ", userId);
-      }
-    };
+    const data = await getProfile(userId);
+    if (data) {
+      setProfileData(data as ProfileData);
+    } else {
+      console.error("No profile data found for user: ", userId);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, [userId]);
 
-  const handleUpdateProfile = async () => {
-    if (!userId) {
-      console.error("No user is logged in");
-      return;
-    }
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchData();
+    });
 
-    const updatedData = {
-      // ... hier die aktualisierten Daten einfügen
-    };
-    await updateProfile(userId, updatedData);
+    return unsubscribe;
+  }, [navigation]);
+
+  const handleEditProfile = () => {
+    navigation.navigate('EditProfile');
+  };
+
+  const uploadImage = async (imagePath: string, userId: string, imageType: string) => {
+    try {
+      const response = await fetch(imagePath);
+      const blob = await response.blob();
+      const ref = storage().ref(`images/${userId}/${imageType}`);
+      await ref.put(blob);
+      const url = await ref.getDownloadURL();
+      console.log('Image uploaded to: ', url);
+      return url;
+    } catch (error) {
+      console.error("Error uploading image: ", error);
+    }
+  };
+
+  const handleSelectProfileImage = () => {
+    ImagePicker.openPicker({
+      width: 300,
+      height: 300,
+      cropping: true,
+    }).then(async image => {
+      console.log(image);
+      if (image.path && userId) {
+        const imageUrl = await uploadImage(image.path, userId, 'profileImage');
+        await updateProfile(userId, { profileImage: imageUrl });
+        fetchData();
+      }
+    });
+  };
+
+  const handleSelectBackgroundImage = () => {
+    ImagePicker.openPicker({
+      width: 300,
+      height: 300,
+      cropping: true,
+    }).then(async image => {
+      console.log(image);
+      if (image.path && userId) {
+        const imageUrl = await uploadImage(image.path, userId, 'backgroundImage');
+        await updateProfile(userId, { backgroundImage: imageUrl });
+        fetchData();
+      }
+    });
   };
 
   if (!profileData) {
@@ -52,19 +109,25 @@ const Profile = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Image source={require('./path/to/your/background/image.jpg')} style={styles.backgroundImage} />
-        <Image source={require('./path/to/your/profile/image.jpg')} style={styles.profileImage} />
+        <Image source={{ uri: profileData.backgroundImage }} style={styles.backgroundImage} />
+        <Image source={{ uri: profileData.profileImage }} style={styles.profileImage} />
         <Text style={styles.name}>{profileData.firstName} {profileData.lastName}</Text>
-        <Text style={styles.jobTitle}>Job Title</Text>
+        <Text style={styles.jobTitle}>{profileData.currentJob} @ {profileData.industry} in {profileData.city}</Text>
+        {profileData.profilSlogan ? <Text style={styles.profilSlogan}>{profileData.profilSlogan}</Text> : null}
       </View>
+      <View style={styles.divider} />
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Über mich</Text>
-        <Text>{profileData.email}</Text>
-        <Text>{profileData.birthdate}</Text>
-        {/* ... andere Profil-Daten anzeigen ... */}
+        <Text style={styles.sectionTitle}>Berufserfahrung</Text>
+        {/* ... Berufserfahrung anzeigen ... */}
       </View>
-      {/* ... andere Abschnitte hinzufügen ... */}
-      <Button title="Profil bearbeiten" onPress={handleUpdateProfile} />
+      <View style={styles.divider} />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Kenntnisse</Text>
+        {/* ... Kenntnisse anzeigen ... */}
+      </View>
+      <Button title="Profilbild auswählen" onPress={handleSelectProfileImage} />
+      <Button title="Hintergrundbild auswählen" onPress={handleSelectBackgroundImage} />
+      <Button title="Profil bearbeiten" onPress={handleEditProfile} />
     </ScrollView>
   );
 };
@@ -99,6 +162,9 @@ const styles = StyleSheet.create({
   jobTitle: {
     color: 'gray',
   },
+  profilSlogan: {
+    fontStyle: 'italic',
+  },
   section: {
     padding: 20,
   },
@@ -106,6 +172,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'gray',
+    marginHorizontal: 20,
   },
 });
 

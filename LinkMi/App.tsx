@@ -1,5 +1,5 @@
 import React from 'react';
-import AppNavigator from './AppNavigator';
+import AppNavigator from './Navigator/AppNavigator';
 import { enableScreens } from 'react-native-screens';
 import firebase from '@react-native-firebase/app';
 import auth from '@react-native-firebase/auth';

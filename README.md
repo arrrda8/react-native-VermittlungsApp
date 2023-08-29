@@ -55,6 +55,14 @@ https://github.com/firebase/firebase-ios-sdk
 
 <code>npm install react-native-reanimated</code>
 
+<code>npm install @react-native-firebase/database </code>
+
+<code>npm install @react-native-firebase/storage</code>
+
+<code>npm install @react-native-firebase/firestore</code>
+
+<code>npm install react-native-image-picker</code>
+
 
 RUBY
 

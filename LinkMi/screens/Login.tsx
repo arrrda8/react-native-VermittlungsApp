@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import auth from '@react-native-firebase/auth';
+import mystyles from '../myStyles'
+import DrawerNavigator from '../Navigator/DrawerNavigator';
+import TabNavigator from '../Navigator/TabNavigator';
 
 const Login: React.FC<{ navigation: any }> = ({navigation}) => {
   const [email, setEmail] = useState('');
@@ -26,12 +29,22 @@ const Login: React.FC<{ navigation: any }> = ({navigation}) => {
   const handleLogin = () => {
     auth()
       .signInWithEmailAndPassword(email, password)
-      .then(() => {
-        console.log('Benutzer angemeldet!');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'AppTabs' }],
-        });
+      .then((userCredential) => {
+        const user = userCredential.user;
+        if (user.emailVerified) {
+          console.log('Benutzer angemeldet!');
+          navigation.navigate('DrawerNavigator', {
+            screen: 'AppTabs',
+            params: { screen: 'Suche' },
+          });
+          
+        } else {
+          console.log('E-Mail nicht bestätigt');
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'EmailConfirm' }],
+          });
+        }
       })
       .catch(error => {
         console.error('Fehler bei der Anmeldung: ', error);
@@ -43,6 +56,9 @@ const Login: React.FC<{ navigation: any }> = ({navigation}) => {
         );
       });
   };
+  
+  
+  
 
   const handlePasswordReset = () => {
     if (!email) {

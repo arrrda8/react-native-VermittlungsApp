@@ -9,7 +9,7 @@ import auth from '@react-native-firebase/auth';
 const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [birthDate, setBirthDate] = useState<Date | null>(null);;
+  const [birthDate, setBirthDate] = useState<Date | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -96,7 +96,7 @@ const Signup: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   const isFormValid = () => {
-    return firstName && lastName && email && email.includes('@') && password && password === confirmPassword;
+    return firstName && lastName && birthDate && email && email.includes('@') && password && password === confirmPassword;
   };
 
   return (

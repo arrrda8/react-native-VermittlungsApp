@@ -6,20 +6,21 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import auth from '@react-native-firebase/auth';
 import { View, ActivityIndicator, Alert } from 'react-native';
 
-import AnzeigeErstellen from './screens/AnzeigeErstellen';
-import Favoriten from './screens/Favoriten';
-import Nachrichten from './screens/Nachrichten';
-import Profil from './screens/Profil';
-import Suche from './screens/Suche';
+import AnzeigeErstellen from '../screens/AnzeigeErstellen';
+import Favoriten from '../screens/Favoriten';
+import Nachrichten from '../screens/Nachrichten';
+import Profil from '../screens/Profil';
+import Suche from '../screens/Suche';
 
-import Login from './screens/Login';
-import Signup from './screens/Signup';
-import EmailConfirm from './screens/EmailConfirm';
+import Login from '../screens/Login';
+import Signup from '../screens/Signup';
+import EmailConfirm from '../screens/EmailConfirm';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
 const RootStack = createStackNavigator();
+const MainStack = createStackNavigator();
 
 const AuthStack = () => (
   <Stack.Navigator initialRouteName="Login">
@@ -59,7 +60,7 @@ const LogoutScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                 .then(() => {
                   navigation.reset({
                     index: 0,
-                    routes: [{ name: 'AuthStack' }],
+                    routes: [{ name: 'AppDrawer' }],
                   });
                 });
             },
@@ -78,8 +79,6 @@ const LogoutScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     </View>
   );
 };
-
-
 
 const AppDrawer = () => (
   <Drawer.Navigator initialRouteName="AppTabs">
@@ -101,15 +100,16 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <MainStack.Navigator>
         {isAuthenticated ? (
-          <RootStack.Screen name="AppDrawer" component={AppDrawer} />
+          <MainStack.Screen name="AppDrawer" component={AppDrawer} />
         ) : (
-          <RootStack.Screen name="AuthStack" component={AuthStack} />
+          <MainStack.Screen name="Auth" component={AuthStack} />
         )}
-      </RootStack.Navigator>
+      </MainStack.Navigator>
     </NavigationContainer>
   );
+  
 };
 
 export default AppNavigator;

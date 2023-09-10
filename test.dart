@@ -74,7 +74,7 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
   }
 
   Future<LatLng?> getCoordinatesFromAddress(String address) async {
-    final url = 'https://maps.googleapis.com/maps/api/geocode/json?address=$address&key=AIzaSyA5VmY2x0mZYYK6-5PPuU7Im1DEOBT8ju0';
+    final url = 'https://maps.googleapis.com/maps/api/geocode/json?address=$address&key=xxx';
     final response = await http.get(Uri.parse(url));
     final jsonData = json.decode(response.body);
 

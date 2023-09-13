@@ -17,6 +17,7 @@ import 'package:linkmi/serviceProvider/addServices_page.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:flutter_sticky_header/flutter_sticky_header.dart';
 import 'package:linkmi/serviceProvider/editServices_page.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_reorderable_list/flutter_reorderable_list.dart';
 
 
@@ -25,20 +26,50 @@ class ServiceProviderProfilePage extends StatefulWidget {
   _ServiceProviderProfilePageState createState() => _ServiceProviderProfilePageState();
 }
 
-int _currentIndex = 0;
-
 class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage> {
   User? user;
   Map<String, dynamic>? profileData;
   int selectedTabIndex = 0;
   List<Map<String, dynamic>> servicesList = [];
+  List<Map<String, dynamic>> servicesListAds = [];
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+  String _companyId = '';
 
   @override
   void initState() {
     super.initState();
     user = FirebaseAuth.instance.currentUser;
     fetchServices();
+    fetchServiceAds();
+    fetchCompanyId();
+  }
+
+  Future<void> fetchCompanyId() async {
+    if (user != null) {
+      try {
+        QuerySnapshot query = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .collection('company')
+            .get();
+
+        if (query.docs.isNotEmpty) {
+          setState(() {
+            _companyId = query.docs.first.id; // Setzt die _companyId auf die ID des ersten Dokuments
+          });
+        } else {
+          print("Keine companyId gefunden");
+        }
+      } catch (e) {
+        print(e);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
+          ),
+        );
+      }
+    }
   }
 
   Future<Map<String, dynamic>?> fetchData() async {
@@ -47,7 +78,7 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
         DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users')
             .doc(user!.uid)
             .collection('company')
-            .doc(user!.uid)
+            .doc(_companyId)
             .get();
         return doc.data() as Map<String, dynamic>?;
       } catch (e) {
@@ -101,7 +132,7 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
     }
     return null;
   }
-
+  
   Future<Map<String, dynamic>?> fetchPrivateProfileData() async {
     if (user != null) {
       try {
@@ -126,7 +157,7 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
         await FirebaseFirestore.instance.collection('users')
             .doc(user!.uid)
             .collection('company')
-            .doc(user!.uid)
+            .doc(_companyId)
             .update({imageType: url});
       } else {
         await FirebaseFirestore.instance.collection('users')
@@ -149,7 +180,6 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
     }
   }
 
-
   Future<void> deleteImage(String imageType) async {
     try {
       // Bild aus Firebase Storage löschen
@@ -160,7 +190,7 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
         await FirebaseFirestore.instance.collection('users')
             .doc(user!.uid)
             .collection('company')
-            .doc(user!.uid)
+            .doc(_companyId)
             .update({imageType: FieldValue.delete()});
       } else {
         await FirebaseFirestore.instance.collection('users')
@@ -394,17 +424,24 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
           .collection('users')
           .doc(user!.uid)
           .collection('company')
-          .where(FieldPath.documentId, isNotEqualTo: user!.uid)
           .get();
 
       setState(() {
-        servicesList = snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+        servicesList = snapshot.docs.where((doc) => doc.id != _companyId).map((doc) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          if (data['someField'] == null) {
+            data['someField'] = ''; // oder einen anderen Standardwert
+          }
+          return data;
+        }).toList();
+
       });
       refreshNotifier.value++;
     } catch (error) {
       print(error);
     }
   }
+
 
   bool _onReorder(int oldIndex, int newIndex) {
     if (newIndex > oldIndex) {
@@ -418,6 +455,24 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
 
   final refreshNotifier = ValueNotifier<int>(0);
 
+  Future<void> fetchServiceAds() async {
+
+    final QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('serviceAds')
+        .where('servicesId')  // Daten filtern
+        .get();
+
+    setState(() {
+      servicesListAds = snapshot.docs.map((doc) {
+        print('Fetched ${snapshot.docs.length} service ads.');
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          ...data,
+          'servicesId': doc.id,
+        };  // Fügen Sie die Dokument-ID den Daten hinzu, um sie später verwenden zu können
+      }).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -429,7 +484,7 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
         stream: FirebaseFirestore.instance.collection('users')
             .doc(user!.uid)
             .collection('company')
-            .doc(user!.uid)
+            .doc(_companyId)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -641,35 +696,38 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
                                               ],
                                             ),
                                           ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: servicesList.isEmpty
+                                          ? Center(
+                                              child: Text(
+                                                  'Keine Dienstleistungen im Angebot'))
+                                          : ReorderableListView.builder(
+                                              shrinkWrap: true,
+                                              itemCount: servicesList.length,
+                                              itemBuilder: (context, index) {
+                                                final serviceData =
+                                                    servicesList[index];
+                                                final Color cardColor = Color(
+                                                    int.parse(
+                                                        serviceData['color'],
+                                                        radix: 16));
+                                                final Color textColor = Color(
+                                                    int.parse(
+                                                        serviceData[
+                                                            'textColor'],
+                                                        radix: 16));
+                                                final List services =
+                                                    serviceData['services'];
 
-                                          Padding(
-                                              padding: const EdgeInsets.all(16),
-                                              child: SingleChildScrollView(
-                                                reverse: true,
-                                                child: Column(
-                                                  children: [
-                                                    if (servicesList.isEmpty)
-                                                      Center(child: Text('Keine Dienstleistungen im Angebot'))
-                                                    else
-                                                      ValueListenableBuilder<int>(
-                                                        valueListenable: refreshNotifier,
-                                                        builder: (context, value, child) {
-                                                          return ListView.builder(
-                                                            key: UniqueKey(),
-                                                            // physics: NeverScrollableScrollPhysics(), // Verhindert das Scrollen der inneren ListView
-                                                            shrinkWrap: true, // Damit die ListView ihre Größe an den Inhalt anpasst
-                                                            itemCount: servicesList.length,
-                                                            itemBuilder: (context, index) {
-                                                              final serviceData = servicesList[index];
-                                                              final Color cardColor = Color(int.parse(serviceData['color'], radix: 16));
-                                                              final Color textColor = Color(int.parse(serviceData['textColor'], radix: 16));
-                                                              final List services = serviceData['services'];
-
-                                                              return Slidable(
-                                                                  endActionPane: ActionPane(
-                                                                    motion: const BehindMotion(),
-                                                                    children: [
-                                                                      SlidableAction(
+                                                return Slidable(
+                                                    key: ValueKey(serviceData[
+                                                        'servicesId']),
+                                                    endActionPane: ActionPane(
+                                                      motion:
+                                                          const BehindMotion(),
+                                                      children: [
+                                                        SlidableAction(
                                                                         label: 'Bearbeiten',
                                                                         backgroundColor: Colors.blue,
                                                                         icon: Icons.edit,
@@ -679,7 +737,12 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
                                                                             MaterialPageRoute(
                                                                               builder: (context) => EditServicesPage(serviceData: serviceData),
                                                                             ),
-                                                                          );
+                                                                          ).then((value) {
+                                                                            if (value == true) {
+                                                                              setState(() {
+                                                                              });
+                                                                            }
+                                                                          });
                                                                         },
                                                                       ),
                                                                       SlidableAction(
@@ -748,10 +811,17 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
                                                                     ),
                                                                   ));
                                                             },
-                                                          );},)
-                                                  ],
-                                                ),)
-                                          ),
+                                                onReorder: (oldIndex, newIndex) {
+                                                  setState(() {
+                                                    if (newIndex > oldIndex) {
+                                                      newIndex -= 1;
+                                                    }
+                                                    final item = servicesList.removeAt(oldIndex);
+                                                    servicesList.insert(newIndex, item);
+                                                  });
+                                                },
+                                              ),
+                                            ),
                                           SizedBox(height: 20.0),
                                           Padding(
                                             padding: const EdgeInsets.only(left: 16.0, right: 16.0),
@@ -803,7 +873,8 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Flexible(
+                                          Container(
+                                            height: 400.0,
                                             child: StreamBuilder<QuerySnapshot>(
                                               stream: FirebaseFirestore.instance.collection('users')
                                                   .doc(user!.uid)
@@ -895,23 +966,6 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
                                               },
                                             ),
                                           ),
-                                          ElevatedButton(
-                                            child: Icon(Icons.add),
-                                            onPressed: () async {
-                                              final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-                                              if (pickedFile != null) {
-                                                final File originalFile = File(pickedFile.path);
-                                                final CroppedFile? cropped = await _cropImage(originalFile);
-                                                if (cropped != null) {
-                                                  final File croppedFile = File(cropped.path); // Konvertieren von CroppedFile zu File
-                                                  final ref = FirebaseStorage.instance.ref('images/${user!.uid}/medien/${DateTime.now().toIso8601String()}.jpg');
-                                                  await ref.putFile(croppedFile);
-                                                  final imageUrl = await ref.getDownloadURL();
-                                                  await FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('media').add({'imageUrl': imageUrl,'timestamp': FieldValue.serverTimestamp()});
-                                                }
-                                              }
-                                            },
-                                          ),
 
                                           SizedBox(height: 20) // Ein bisschen Abstand zum unteren Rand
                                         ],
@@ -919,19 +973,44 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
                                     ),
                                     SingleChildScrollView(
                                       child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                        Padding(
-                                        padding: const EdgeInsets.only(left: 16.0),
-                                          child: Text(
-                                          'Anzeige',
-                                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                                              child: Column(
+                                                children: servicesListAds.map((data) {
+                                                  return Container(
+                                                    width: MediaQuery.of(context).size.width * 0.9,
+                                                    child: Card(
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.all(8.0),
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text("Thema: ${data['topic']}"),
+                                                            SizedBox(height: 5),
+                                                            Text("Service: ${data['service']}"),
+                                                            Text("Kategorie: ${data['serviceCategory']}"),
+                                                            Text("Beschreibung: ${data['serviceDescription']}"),
+                                                            SizedBox(height: 5),
+                                                            Text("Preis: ${data['price']} €"),
+                                                            Text("Aktionspreis: ${data['actionPrice']} €"),
+                                                            SizedBox(height: 5),
+                                                            Text("Erstellt am: ${DateFormat('dd.MM.yyyy').format(DateTime.fromMillisecondsSinceEpoch(data['createdAt'].seconds * 1000))}"),
+                                                            Text("Service Startdatum: ${DateFormat('dd.MM.yyyy').format(DateTime.fromMillisecondsSinceEpoch(data['startServiceDate'].seconds * 1000))}")
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                }).toList(),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ]
                                       ),
-                                    ),
-                                    ]),
+                                    )
+
+                                  ]),
                                     )
                                     )
                                   ],

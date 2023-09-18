@@ -4,61 +4,62 @@ import 'package:flutter/cupertino.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:linkmi/main.dart';
-import 'package:linkmi/platform_widgets.dart';
-import 'package:linkmi/serviceProvider/editServiceProviderProfile_page.dart';
-import 'package:zoom_pinch_overlay/zoom_pinch_overlay.dart';
-import 'package:linkmi/serviceProvider/addServices_page.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:flutter_sticky_header/flutter_sticky_header.dart';
-import 'package:linkmi/serviceProvider/editServices_page.dart';
-import 'package:intl/intl.dart';
-import 'package:flutter_reorderable_list/flutter_reorderable_list.dart';
+import 'package:linkmi/editAboutMe_page.dart';
+import 'package:linkmi/addWorkingExperience_page.dart';
+import 'package:linkmi/editWorkingExperience_page.dart';
+import 'package:linkmi/company/createCompanyProfile_page.dart';
+import 'package:linkmi/company/companyNavigator.dart';
+import 'package:linkmi/serviceProvider/createServiceProviderProfile_page.dart';
+import 'package:linkmi/serviceProvider/serviceProviderNavigator.dart';
 
-
-class ServiceProviderProfilePage extends StatefulWidget {
+class ProfilePage extends StatefulWidget {
   @override
-  _ServiceProviderProfilePageState createState() => _ServiceProviderProfilePageState();
+  _ProfilePageState createState() => _ProfilePageState();
 }
 
-class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage> {
+class _ProfilePageState extends State<ProfilePage> {
   User? user;
   Map<String, dynamic>? profileData;
-  int selectedTabIndex = 0;
-  List<Map<String, dynamic>> servicesList = [];
-  List<Map<String, dynamic>> servicesListAds = [];
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
-  String _companyId = '';
+  List<String> skills = [];
+  TextEditingController skillController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     user = FirebaseAuth.instance.currentUser;
-    fetchServices();
-    fetchServiceAds();
-    fetchCompanyId();
   }
 
-  Future<void> fetchCompanyId() async {
+  Future<Map<String, dynamic>> fetchCompanyData() async {
     if (user != null) {
       try {
-        QuerySnapshot query = await FirebaseFirestore.instance
+        DocumentSnapshot doc = await FirebaseFirestore.instance
             .collection('users')
             .doc(user!.uid)
             .collection('company')
+            .doc(user!.uid)
             .get();
+        return doc.data() as Map<String, dynamic>? ?? {};
+      } catch (e) {
+        print(e);
+        return {};
+      }
+    }
+    return {};
+  }
 
-        if (query.docs.isNotEmpty) {
-          setState(() {
-            _companyId = query.docs.first.id; // Setzt die _companyId auf die ID des ersten Dokuments
-          });
+  Future<Map<String, dynamic>?> fetchData() async {
+    if (user != null) {
+      try {
+        DocumentSnapshot doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .get();
+        if (doc.exists) {
+          return doc.data() as Map<String, dynamic>?;
         } else {
-          print("Keine companyId gefunden");
+          return null;
         }
       } catch (e) {
         print(e);
@@ -68,113 +69,47 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
                 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
           ),
         );
+        return null;
       }
     }
+    return null;
   }
 
-  Future<Map<String, dynamic>?> fetchData() async {
-    if (user != null) {
+  Future<void> uploadImage(ImageSource source, String imageType) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source);
+
+    if (pickedFile != null) {
+      final File file = File(pickedFile.path);
       try {
-        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users')
+        await FirebaseStorage.instance
+            .ref('images/${user!.uid}/$imageType')
+            .putFile(file);
+        final String url = await FirebaseStorage.instance
+            .ref('images/${user!.uid}/$imageType')
+            .getDownloadURL();
+        await FirebaseFirestore.instance
+            .collection('users')
             .doc(user!.uid)
-            .collection('company')
-            .doc(_companyId)
-            .get();
-        return doc.data() as Map<String, dynamic>?;
+            .update({imageType: url});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Bild erfolgreich hochgeladen.'),
+          ),
+        );
       } catch (e) {
         print(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
+            content: Text(
+                'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
           ),
         );
-        return null;
       }
-    }
-    return null;
-  }
-
-  void navigateToEditServiceProviderProfilePage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => EditServiceProviderProfilePage()),
-    );
-  }
-
-  void navigateToPrivateProfile() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HomePage(initialIndex: 4),
-      ),
-    );
-  }
-
-  Future<LatLng?> getCoordinatesFromAddress(String address) async {
-    final url = 'https://maps.googleapis.com/maps/api/geocode/json?address=$address&key=AIzaSyA5VmY2x0mZYYK6-5PPuU7Im1DEOBT8ju0';
-    final response = await http.get(Uri.parse(url));
-    final jsonData = json.decode(response.body);
-
-    if (jsonData['status'] == 'OK') {
-      final lat = jsonData['results'][0]['geometry']['location']['lat'];
-      final lng = jsonData['results'][0]['geometry']['location']['lng'];
-      return LatLng(lat, lng);
     } else {
-      print('Error geocoding address: ${jsonData['status']}');
-      return null;
-    }
-  }
-
-  Future<LatLng?> fetchCoordinates() async {
-    if (profileData != null) {
-      final address = '${profileData!['zipCode']} ${profileData!['city']}';
-      return await getCoordinatesFromAddress(address);
-    }
-    return null;
-  }
-  
-  Future<Map<String, dynamic>?> fetchPrivateProfileData() async {
-    if (user != null) {
-      try {
-        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
-        return doc.data() as Map<String, dynamic>?;
-      } catch (e) {
-        print(e);
-        return null;
-      }
-    }
-    return null;
-  }
-
-  Future<void> uploadImage(File file, String imageType) async {
-    try {
-      // Speichern Sie das Bild im richtigen Ordner
-      await FirebaseStorage.instance.ref('images/${user!.uid}/$imageType').putFile(file);
-      final String url = await FirebaseStorage.instance.ref('images/${user!.uid}/$imageType').getDownloadURL();
-
-      // Aktualisieren Sie die richtige Firestore-Sammlung basierend auf dem Bildtyp
-      if (imageType == 'companyProfileImage' || imageType == 'companyBackgroundImage') {
-        await FirebaseFirestore.instance.collection('users')
-            .doc(user!.uid)
-            .collection('company')
-            .doc(_companyId)
-            .update({imageType: url});
-      } else {
-        await FirebaseFirestore.instance.collection('users')
-            .doc(user!.uid)
-            .update({imageType: url});
-      }
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Bild erfolgreich hochgeladen.'),
-        ),
-      );
-    } catch (e) {
-      print(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
+          content: Text('Kein Bild ausgewählt.'),
         ),
       );
     }
@@ -183,20 +118,15 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
   Future<void> deleteImage(String imageType) async {
     try {
       // Bild aus Firebase Storage löschen
-      await FirebaseStorage.instance.ref('images/${user!.uid}/$imageType').delete();
+      await FirebaseStorage.instance
+          .ref('images/${user!.uid}/$imageType')
+          .delete();
 
       // Bild-URL aus Firestore löschen
-      if (imageType == 'companyProfileImage' || imageType == 'companyBackgroundImage') {
-        await FirebaseFirestore.instance.collection('users')
-            .doc(user!.uid)
-            .collection('company')
-            .doc(_companyId)
-            .update({imageType: FieldValue.delete()});
-      } else {
-        await FirebaseFirestore.instance.collection('users')
-            .doc(user!.uid)
-            .update({imageType: FieldValue.delete()});
-      }
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .update({imageType: FieldValue.delete()});
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -207,27 +137,17 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
       print(e);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
+          content: Text(
+              'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
         ),
       );
     }
   }
 
-  void _showImageOptions(String imageType) async {
-    final bool isProfileImage = imageType == 'companyProfileImage';
-    final bool imageExists = profileData![imageType] != null && profileData![imageType]!.isNotEmpty;
-
-    void handleImageSelection() async {
-      final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-      if (pickedFile != null) {
-        final File originalFile = File(pickedFile.path);
-        final CroppedFile? croppedFile = await _cropImage(originalFile);
-        if (croppedFile != null) {
-          final File croppedFinalFile = File(croppedFile.path); // Konvertieren Sie CroppedFile in File
-          await uploadImage(croppedFinalFile, imageType);
-        }
-      }
-    }
+  void _showImageOptions(String imageType) {
+    final bool isProfileImage = imageType == 'profileImage';
+    final bool imageExists =
+        profileData![imageType] != null && profileData![imageType]!.isNotEmpty;
 
     if (Platform.isIOS) {
       showCupertinoModalPopup(
@@ -236,15 +156,23 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
           title: Text(isProfileImage ? 'Profilbild' : 'Hintergrundbild'),
           actions: [
             CupertinoActionSheetAction(
-              child: Text(imageExists ? (isProfileImage ? 'Profilbild wechseln' : 'Hintergrundbild wechseln') : (isProfileImage ? 'Profilbild hinzufügen' : 'Hintergrundbild hinzufügen')),
+              child: Text(imageExists
+                  ? (isProfileImage
+                  ? 'Profilbild wechseln'
+                  : 'Hintergrundbild wechseln')
+                  : (isProfileImage
+                  ? 'Profilbild hinzufügen'
+                  : 'Hintergrundbild hinzufügen')),
               onPressed: () {
                 Navigator.pop(context);
-                handleImageSelection();
+                uploadImage(ImageSource.gallery, imageType);
               },
             ),
             if (imageExists)
               CupertinoActionSheetAction(
-                child: Text(isProfileImage ? 'Profilbild löschen' : 'Hintergrundbild löschen'),
+                child: Text(isProfileImage
+                    ? 'Profilbild löschen'
+                    : 'Hintergrundbild löschen'),
                 isDestructiveAction: true,
                 onPressed: () {
                   Navigator.pop(context);
@@ -265,17 +193,25 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
         context: context,
         builder: (context) => Column(
           mainAxisSize: MainAxisSize.min,
-          children: <Widget> [
+          children: [
             ListTile(
-              title: Text(imageExists ? (isProfileImage ? 'Profilbild wechseln' : 'Hintergrundbild wechseln') : (isProfileImage ? 'Profilbild hinzufügen' : 'Hintergrundbild hinzufügen')),
+              title: Text(imageExists
+                  ? (isProfileImage
+                  ? 'Profilbild wechseln'
+                  : 'Hintergrundbild wechseln')
+                  : (isProfileImage
+                  ? 'Profilbild hinzufügen'
+                  : 'Hintergrundbild hinzufügen')),
               onTap: () {
                 Navigator.pop(context);
-                handleImageSelection();
+                uploadImage(ImageSource.gallery, imageType);
               },
             ),
             if (imageExists)
               ListTile(
-                title: Text(isProfileImage ? 'Profilbild löschen' : 'Hintergrundbild löschen'),
+                title: Text(isProfileImage
+                    ? 'Profilbild löschen'
+                    : 'Hintergrundbild löschen'),
                 leading: Icon(Icons.delete, color: Colors.red),
                 onTap: () {
                   Navigator.pop(context);
@@ -288,747 +224,569 @@ class _ServiceProviderProfilePageState extends State<ServiceProviderProfilePage>
     }
   }
 
-  Future<void> _deleteCompany() async {
-    // Zeigen Sie einen Bestätigungsdialog an
-    bool? shouldDelete = await showCupertinoDialog<bool>(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text('Unternehmen löschen'),
-        content: Text('Möchten Sie dieses Unternehmen wirklich löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.'),
-        actions: [
-          CupertinoDialogAction(
+  void _showCompanyOptions() {
+    if (Platform.isIOS) {
+      showCupertinoModalPopup(
+        context: context,
+        builder: (context) => CupertinoActionSheet(
+          title: Text('Unternehmensseite erstellen'),
+          actions: [
+            CupertinoActionSheetAction(
+              child: Text('Ich besitze ein Betrieb'),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreateCompanyProfilePage(),
+                  ),
+                );
+              },
+            ),
+            CupertinoActionSheetAction(
+              child: Text('Ich biete Dienstleistungen an'),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreateServiceProviderProfilePage(),
+                  ),
+                );
+              },
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
             child: Text('Abbrechen'),
             onPressed: () {
-              Navigator.of(context).pop(false); // Gibt 'false' zurück, um das Löschen abzubrechen
+              Navigator.pop(context);
             },
           ),
-          CupertinoDialogAction(
-            child: Text('Löschen'),
-            isDestructiveAction: true,
-            onPressed: () {
-              Navigator.of(context).pop(true); // Gibt 'true' zurück, um das Löschen fortzusetzen
-            },
-          ),
-        ],
-      ),
-    );
-
-    // Wenn der Benutzer die Löschung bestätigt hat
-    if (shouldDelete == true) {
-      try {
-        // Löschen Sie alle Dokumente aus der 'company' Sammlung
-        QuerySnapshot companyDocs = await FirebaseFirestore.instance.collection('users')
-            .doc(user!.uid)
-            .collection('company')
-            .get();
-        for (DocumentSnapshot doc in companyDocs.docs) {
-          await doc.reference.delete();
-        }
-
-        // Löschen Sie alle Dokumente aus der 'media' Sammlung
-        QuerySnapshot mediaDocs = await FirebaseFirestore.instance.collection('users')
-            .doc(user!.uid)
-            .collection('media')
-            .get();
-        for (DocumentSnapshot doc in mediaDocs.docs) {
-          await doc.reference.delete();
-        }
-
-        // Überprüfen Sie, ob companyProfileImage existiert, bevor Sie versuchen, es zu löschen
-        Reference companyProfileImageRef = FirebaseStorage.instance.ref('images/${user!.uid}/companyProfileImage');
-        if ((await companyProfileImageRef.getMetadata()).updated != null) {
-          await companyProfileImageRef.delete();
-        }
-
-        // Überprüfen Sie, ob companyBackgroundImage existiert, bevor Sie versuchen, es zu löschen
-        Reference companyBackgroundImageRef = FirebaseStorage.instance.ref('images/${user!.uid}/companyBackgroundImage');
-        if ((await companyBackgroundImageRef.getMetadata()).updated != null) {
-          await companyBackgroundImageRef.delete();
-        }
-
-        // Löschen Sie alle Dateien im 'medien' Ordner
-        ListResult medienFiles = await FirebaseStorage.instance.ref('images/${user!.uid}/medien').listAll();
-        for (Reference file in medienFiles.items) {
-          await file.delete();
-        }
-      } catch (e) {
-        print(e);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
-          ),
-        );
-      } finally {
-        // Weiterleitung zur profilePage.dart
-        navigateToPrivateProfile();
-      }
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('Ich besitze ein Betrieb'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreateCompanyProfilePage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              title: Text('Ich biete Dienstleistungen an'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreateServiceProviderProfilePage(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      );
     }
   }
 
-  void _showMenuOptions() {
-    showCupertinoModalPopup(
-      context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: Text('${profileData!['companyName'] ?? ''}'),
-        actions: [
-          CupertinoActionSheetAction(
-            child: Text('Bearbeiten'),
-            onPressed: () {
-              Navigator.pop(context);
-              navigateToEditServiceProviderProfilePage();
-            },
-          ),
-          CupertinoActionSheetAction(
-            child: Text('Löschen'),
-            isDestructiveAction: true,
-            onPressed: () async {
-              Navigator.pop(context);
-              await _deleteCompany();
-            },
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          child: Text('Abbrechen'),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-      ),
-    );
+  String generateJobText(String? currentJob, String? industry, String? city) {
+    if (currentJob != null && currentJob.isNotEmpty) {
+      if (industry != null && industry.isNotEmpty) {
+        if (city != null && city.isNotEmpty) {
+          return '$currentJob @ $industry in $city';
+        } else {
+          return '$currentJob @ $industry';
+        }
+      } else if (city != null && city.isNotEmpty) {
+        return '$currentJob in $city';
+      } else {
+        return currentJob;
+      }
+    } else if (industry != null && industry.isNotEmpty) {
+      if (city != null && city.isNotEmpty) {
+        return '$industry in $city';
+      } else {
+        return industry;
+      }
+    } else if (city != null && city.isNotEmpty) {
+      return city;
+    } else {
+      return '';
+    }
   }
 
-  Future<CroppedFile?> _cropImage(File imageFile) async {
-    final croppedFile = await ImageCropper().cropImage(
-      sourcePath: imageFile.path,
-      compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 100,
-      uiSettings: [
-        AndroidUiSettings(
-            toolbarTitle: 'Bild zuschneiden',
-            toolbarColor: Colors.blue,
-            toolbarWidgetColor: Colors.white,
-            initAspectRatio: CropAspectRatioPreset.original,
-            lockAspectRatio: false
-        ),
-        IOSUiSettings(
-          title: 'Bild zuschneiden',
-        ),
-      ],
-    );
-    return croppedFile;
+  int calculateAge(DateTime birthday) {
+    final currentDate = DateTime.now();
+    int age = currentDate.year - birthday.year;
+    if (currentDate.month < birthday.month ||
+        (currentDate.month == birthday.month &&
+            currentDate.day < birthday.day)) {
+      age--;
+    }
+    return age;
   }
 
-  Future<void> fetchServices() async {
+  Future<void> updateSkillsInFirestore() async {
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
+      await FirebaseFirestore.instance
           .collection('users')
           .doc(user!.uid)
-          .collection('company')
-          .get();
-
-      setState(() {
-        servicesList = snapshot.docs.where((doc) => doc.id != _companyId).map((doc) {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          if (data['someField'] == null) {
-            data['someField'] = ''; // oder einen anderen Standardwert
-          }
-          return data;
-        }).toList();
-
-      });
-      refreshNotifier.value++;
-    } catch (error) {
-      print(error);
+          .update({'skills': skills});
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
+        ),
+      );
     }
-  }
-
-
-  bool _onReorder(int oldIndex, int newIndex) {
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
-    final item = servicesList.removeAt(oldIndex);
-    servicesList.insert(newIndex, item);
-    setState(() {});
-    return true;
-  }
-
-  final refreshNotifier = ValueNotifier<int>(0);
-
-  Future<void> fetchServiceAds() async {
-
-    final QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('serviceAds')
-        .where('servicesId')  // Daten filtern
-        .get();
-
-    setState(() {
-      servicesListAds = snapshot.docs.map((doc) {
-        print('Fetched ${snapshot.docs.length} service ads.');
-        final data = doc.data() as Map<String, dynamic>;
-        return {
-          ...data,
-          'servicesId': doc.id,
-        };  // Fügen Sie die Dokument-ID den Daten hinzu, um sie später verwenden zu können
-      }).toList();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        return false;
-      },
-      child: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('users')
-            .doc(user!.uid)
-            .collection('company')
-            .doc(_companyId)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          } else if (snapshot.hasError) {
-            return Scaffold(
-              body: Center(
-                child: Text('Fehler: ${snapshot.error}'),
-              ),
-            );
-          } else {
-            if (snapshot.data != null && snapshot.data!.exists) {
-              profileData = snapshot.data!.data() as Map<String, dynamic>;
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Text('Fehler: ${snapshot.error}'),
+            ),
+          );
+        } else {
+          profileData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+          skills = List<String>.from(profileData!['skills'] ?? []);
 
-              // Standardbilder definieren
-              ImageProvider backgroundImage = AssetImage('lib/assets/hintergrund.jpg');
-              ImageProvider profileImage = AssetImage('lib/assets/standardprofilbild.jpg');
+          ImageProvider backgroundImage =
+          AssetImage('lib/assets/hintergrund.jpg');
+          ImageProvider profileImage =
+          AssetImage('lib/assets/standardprofilbild.jpg');
+          final ImageProvider defaultCompanyImage =
+          AssetImage('lib/assets/standardprofilbild.jpg');
 
-              // Überprüfen, ob companyBackgroundImage vorhanden ist und es verwenden, wenn es vorhanden ist
-              if (profileData!['companyBackgroundImage'] != null && profileData!['companyBackgroundImage']!.isNotEmpty) {
-                backgroundImage = NetworkImage("${profileData!['companyBackgroundImage']}?v=${DateTime.now().millisecondsSinceEpoch}");
-              }
+          if (profileData!['backgroundImage'] != null &&
+              profileData!['backgroundImage']!.isNotEmpty) {
+            backgroundImage = NetworkImage(profileData!['backgroundImage']!);
+          }
 
-              // Überprüfen, ob companyProfileImage vorhanden ist und es verwenden, wenn es vorhanden ist
-              if (profileData!['companyProfileImage'] != null && profileData!['companyProfileImage']!.isNotEmpty) {
-                profileImage = NetworkImage("${profileData!['companyProfileImage']}?v=${DateTime.now().millisecondsSinceEpoch}");
-              }
-              return DefaultTabController(
-                  length: 3, // Anzahl der Tabs
-                  child: Scaffold(
-                      key: _scaffoldMessengerKey,
-                      body: CustomScrollView(
-                          slivers: [
-                            SliverList(
-                                delegate: SliverChildListDelegate(
-                                    [
-                                      Container(
-                                        height: 240,
-                                        child: Stack(
-                                          children: <Widget> [
-                                            Positioned(
-                                              top: 0,
-                                              left: 0,
-                                              right: 0,
-                                              child: Image(
-                                                image: backgroundImage,
-                                                height: 200,
-                                                width: double.infinity,
-                                                fit: BoxFit.cover,
-                                              ),
-                                            ),
-                                            Positioned(
-                                              top: 80,
-                                              left: (MediaQuery.of(context).size.width - 160) / 2,
-                                              child: Stack(
-                                                children: <Widget>[
-                                                  Container(
-                                                    width: 160,
-                                                    height: 160,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      border: Border.all(
-                                                        color: Colors.grey,
-                                                        width: 2.0,
-                                                      ),
-                                                    ),
-                                                    child: CircleAvatar(
-                                                      radius: 50,
-                                                      backgroundImage: profileImage,
-                                                    ),
-                                                  ),
-                                                  Positioned(
-                                                    right: 55,
-                                                    bottom: 0,
-                                                    child: IconButton(
-                                                      icon: Icon(Icons.add_a_photo),
-                                                      color: Colors.white,
-                                                      onPressed: () => _showImageOptions('companyProfileImage'),
-                                                    ),
-                                                  ),
-                                                  // Hier wird das private Profilbild hinzugefügt
-                                                  InkWell(
-                                                    onTap: navigateToPrivateProfile,
-                                                    child: FutureBuilder<Map<String, dynamic>?>(
-                                                      future: fetchPrivateProfileData(),
-                                                      builder: (context, snapshot) {
-                                                        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                                                          String? privateProfileImageUrl = snapshot.data!['profileImage'];
-                                                          if (privateProfileImageUrl != null && privateProfileImageUrl.isNotEmpty) {
-                                                            return CircleAvatar(
-                                                              radius: 25,
-                                                              backgroundImage: NetworkImage(privateProfileImageUrl),
-                                                            );
-                                                          }
-                                                        }
-                                                        return CircleAvatar(
-                                                          radius: 25,
-                                                          backgroundImage: AssetImage('lib/assets/standardprofilbild.jpg'),
-                                                        );
-                                                      },
-                                                    ),
-                                                  )
+          if (profileData!['profileImage'] != null &&
+              profileData!['profileImage']!.isNotEmpty) {
+            profileImage = NetworkImage(profileData!['profileImage']!);
+          }
 
-                                                ],
-                                              ),
-                                            ),
-
-                                            Positioned(
-                                              bottom: 35,
-                                              right: 0,
-                                              child: IconButton(
-                                                icon: Icon(Icons.add_a_photo),
-                                                color: Colors.white,
-                                                onPressed: () => _showImageOptions('companyBackgroundImage'),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 10.0),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: <Widget> [
-                                            Container(
-                                              width: 48, // Dies sollte der ungefähren Breite des IconButton entsprechen
-                                            ),
-                                            Expanded(
-                                              child: Text(
-                                                '${profileData!['companyName'] ?? ''}',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                                              ),
-                                            ),
-                                            IconButton(
-                                              icon: Icon(Icons.edit),
-                                              onPressed: _showMenuOptions,
-                                            ),
-
-                                          ],
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 5.0),
-                                        child: Text(
-                                          '${profileData!['industry'] ?? ''}',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 5.0),
-                                        child: Text(
-                                          '${profileData!['description'] ?? ''}',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                                        ),
-                                      ),
-                                    ]
-                                )
-                            ),
-
-                            SliverStickyHeader(
-                              header: Container(
-                                color: Colors.white,
-                                child: TabBar(
-                                  labelColor: Colors.blue,
-                                  unselectedLabelColor: Colors.black,
-                                  tabs: [
-                                    Tab(text: 'Über mich'),
-                                    Tab(text: 'Medien'),
-                                    Tab(text: 'Anzeigen'),
-                                  ],
-                                ),
-                              ),
-                              sliver: SliverFillRemaining(
-                                child: TabBarView(
-                                  children: <Widget>[
-                                    SingleChildScrollView(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,  // Dies sorgt für den Abstand zwischen Text und Icon
-                                              children: [
-                                                Text(
-                                                  'Dienstleistungen',
-                                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                                ),
-                                                IconButton(
-                                                  icon: Icon(Icons.add),
-                                                  onPressed: () async {
-                                                    final result = await Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(builder: (context) => AddServicesPage()),
-                                                    );
-
-                                                    if (result == true) {
-                                                      fetchServices();  //
-                                                    }
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: servicesList.isEmpty
-                                          ? Center(
-                                              child: Text(
-                                                  'Keine Dienstleistungen im Angebot'))
-                                          : ReorderableListView.builder(
-                                              shrinkWrap: true,
-                                              itemCount: servicesList.length,
-                                              itemBuilder: (context, index) {
-                                                final serviceData =
-                                                    servicesList[index];
-                                                final Color cardColor = Color(
-                                                    int.parse(
-                                                        serviceData['color'],
-                                                        radix: 16));
-                                                final Color textColor = Color(
-                                                    int.parse(
-                                                        serviceData[
-                                                            'textColor'],
-                                                        radix: 16));
-                                                final List services =
-                                                    serviceData['services'];
-
-                                                return Slidable(
-                                                    key: ValueKey(serviceData[
-                                                        'servicesId']),
-                                                    endActionPane: ActionPane(
-                                                      motion:
-                                                          const BehindMotion(),
-                                                      children: [
-                                                        SlidableAction(
-                                                                        label: 'Bearbeiten',
-                                                                        backgroundColor: Colors.blue,
-                                                                        icon: Icons.edit,
-                                                                        onPressed: (context) {
-                                                                          Navigator.push(
-                                                                            context,
-                                                                            MaterialPageRoute(
-                                                                              builder: (context) => EditServicesPage(serviceData: serviceData),
-                                                                            ),
-                                                                          ).then((value) {
-                                                                            if (value == true) {
-                                                                              setState(() {
-                                                                              });
-                                                                            }
-                                                                          });
-                                                                        },
-                                                                      ),
-                                                                      SlidableAction(
-                                                                        label: 'Löschen',
-                                                                        backgroundColor: Colors.red,
-                                                                        icon: Icons.delete,
-                                                                        onPressed: (context) async {
-                                                                          final shouldDelete = await showDeleteConfirmation(context);
-                                                                          if (shouldDelete == true) {
-                                                                            // Firestore Dokument löschen
-                                                                            await FirebaseFirestore.instance
-                                                                                .collection('users')
-                                                                                .doc(user!.uid)
-                                                                                .collection('company')
-                                                                                .doc(serviceData['servicesId']) // Verwenden Sie serviceData['servicesId'] als Dokument-ID
-                                                                                .delete();
-
-                                                                            // Bild aus Firebase Storage löschen
-                                                                            final ref = FirebaseStorage.instance
-                                                                                .ref('images/${user!.uid}/${serviceData['servicesId']}');
-
-                                                                            try {
-                                                                              // Versuchen Sie, die Download-URL zu erhalten
-                                                                              final url = await ref.getDownloadURL();
-
-                                                                              // Wenn die obige Zeile erfolgreich ist, existiert das Bild und kann gelöscht werden
-                                                                              await ref.delete();
-                                                                              print("Bild erfolgreich gelöscht");
-                                                                            } catch (e) {
-                                                                              if (e is FirebaseException && e.code == 'object-not-found') {
-                                                                                // Das Bild existiert nicht, also tun Sie nichts
-                                                                                print("Bild existiert nicht, nichts zu löschen");
-                                                                              } else {
-                                                                                // Ein anderer Fehler ist aufgetreten
-                                                                                print("Ein Fehler ist aufgetreten: $e");
-                                                                              }
-                                                                            }
-
-                                                                            // Optional: Aktualisieren Sie den UI-Status oder zeigen Sie eine Benachrichtigung an, dass das Löschen erfolgreich war
-                                                                            ScaffoldMessenger.of(context).showSnackBar(
-                                                                              SnackBar(content: Text('Erfolgreich gelöscht!')),
-                                                                            );
-                                                                          }
-                                                                        },
-                                                                      ),
-
-                                                                    ],
-                                                                  ),
-                                                                  child: Card(
-                                                                    color: cardColor,
-                                                                    child: Column(
-                                                                      children: <Widget>[
-                                                                        if (serviceData['imageUrl'] != null)
-                                                                          Image.network(serviceData['imageUrl'], fit: BoxFit.cover, height: 100, width: double.infinity),
-                                                                        ExpansionTile(
-                                                                          title: Text(serviceData['category'], style: TextStyle(color: textColor)),
-                                                                          trailing: Icon(Icons.arrow_drop_down, color: textColor),
-                                                                          children: services.map<Widget>((s) {
-                                                                            return ListTile(
-                                                                              title: Text(s['service'], style: TextStyle(color: textColor)),
-                                                                              trailing: Text(s['price'] == null || s['price'].isEmpty ? "auf Anfrage" : '${s['price']} €', style: TextStyle(color: textColor)),
-                                                                            );
-                                                                          }).toList(),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ));
-                                                            },
-                                                onReorder: (oldIndex, newIndex) {
-                                                  setState(() {
-                                                    if (newIndex > oldIndex) {
-                                                      newIndex -= 1;
-                                                    }
-                                                    final item = servicesList.removeAt(oldIndex);
-                                                    servicesList.insert(newIndex, item);
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                          SizedBox(height: 20.0),
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,  // Dies sorgt für den Abstand zwischen Text und Icon
-                                              children: [
-                                                Text(
-                                                  'Standort',
-                                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          SizedBox(height: 0.0),
-                                          Padding(
-                                            padding: const EdgeInsets.all(16.0),
-                                            child: Container(
-                                              height: 200.0,
-                                              child: FutureBuilder<LatLng?>(
-                                                future: fetchCoordinates(),
-                                                builder: (context, snapshot) {
-                                                  if (snapshot.connectionState == ConnectionState.waiting) {
-                                                    return Center(child: CircularProgressIndicator());
-                                                  } else if (snapshot.hasError) {
-                                                    return Center(child: Text('Fehler beim Abrufen der Koordinaten.'));
-                                                  } else if (snapshot.data != null) {
-                                                    return GoogleMap(
-                                                      initialCameraPosition: CameraPosition(
-                                                        target: snapshot.data!,
-                                                        zoom: 14.0,
-                                                      ),
-                                                      markers: {
-                                                        Marker(
-                                                          markerId: MarkerId('companyLocation'),
-                                                          position: snapshot.data!,
-                                                          infoWindow: InfoWindow(title: 'Unternehmen'),
-                                                        ),
-                                                      },
-                                                    );
-                                                  } else {
-                                                    return Center(child: Text('Adresse nicht gefunden.'));
-                                                  }
-                                                },
-                                              ),),),
-                                        ],
-                                      ),
-                                    ),
-                                    SingleChildScrollView(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            height: 400.0,
-                                            child: StreamBuilder<QuerySnapshot>(
-                                              stream: FirebaseFirestore.instance.collection('users')
-                                                  .doc(user!.uid)
-                                                  .collection('media')
-                                                  .orderBy('timestamp', descending: true) // Neueste Bilder zuerst
-                                                  .snapshots(),
-                                              builder: (context, snapshot) {
-                                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                                  return Center(child: CircularProgressIndicator());
-                                                } else if (snapshot.hasError) {
-                                                  return Center(child: Text('Fehler beim Abrufen der Medien.'));
-                                                } else if (snapshot.hasData) {
-                                                  final mediaData = snapshot.data!.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
-                                                  return GridView.builder(
-                                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                                      crossAxisCount: 3,
-                                                      crossAxisSpacing: 2.0,
-                                                      mainAxisSpacing: 2.0,
-                                                    ),
-                                                    itemCount: mediaData.length,
-                                                    itemBuilder: (context, index) {
-                                                      return GestureDetector(
-                                                        onLongPress: () {
-                                                          if (Platform.isIOS) {
-                                                            showCupertinoModalPopup(
-                                                              context: context,
-                                                              builder: (context) => CupertinoActionSheet(
-                                                                actions: [
-                                                                  CupertinoActionSheetAction(
-                                                                    child: Text('Löschen'),
-                                                                    isDestructiveAction: true,
-                                                                    onPressed: () {
-                                                                      // Hier den Code zum Löschen des Bildes hinzufügen
-                                                                      FirebaseFirestore.instance.collection('users')
-                                                                          .doc(user!.uid)
-                                                                          .collection('media')
-                                                                          .doc(snapshot.data!.docs[index].id)
-                                                                          .delete();
-
-                                                                      Navigator.pop(context);
-                                                                    },
-                                                                  ),
-                                                                ],
-                                                                cancelButton: CupertinoActionSheetAction(
-                                                                  child: Text('Abbrechen'),
-                                                                  onPressed: () {
-                                                                    Navigator.pop(context);
-                                                                  },
-                                                                ),
-                                                              ),
-                                                            );
-                                                          } else {
-                                                            // Für Android-Geräte
-                                                            showModalBottomSheet(
-                                                              context: context,
-                                                              builder: (context) => Column(
-                                                                mainAxisSize: MainAxisSize.min,
-                                                                children: <Widget>[
-                                                                  ListTile(
-                                                                    leading: Icon(Icons.delete),
-                                                                    title: Text('Löschen'),
-                                                                    onTap: () {
-                                                                      // Hier den Code zum Löschen des Bildes hinzufügen
-                                                                      FirebaseFirestore.instance.collection('users')
-                                                                          .doc(user!.uid)
-                                                                          .collection('media')
-                                                                          .doc(snapshot.data!.docs[index].id)
-                                                                          .delete();
-
-                                                                      Navigator.pop(context);
-                                                                    },
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            );
-                                                          }
-                                                        },
-                                                        child: ZoomOverlay(
-                                                          maxScale: 2.5, // Maximale Zoomstufe
-                                                          minScale: 1.0, // Minimale Zoomstufe
-                                                          child: Image.network(mediaData[index]['imageUrl'], fit: BoxFit.cover),
-                                                        ),
-                                                      );
-                                                    },
-                                                  );
-                                                } else {
-                                                  return Center(child: Text('Keine Medien gefunden.'));
-                                                }
-                                              },
-                                            ),
-                                          ),
-
-                                          SizedBox(height: 20) // Ein bisschen Abstand zum unteren Rand
-                                        ],
-                                      ),
-                                    ),
-                                    SingleChildScrollView(
-                                      child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Padding(
-                                              padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                                              child: Column(
-                                                children: servicesListAds.map((data) {
-                                                  return Container(
-                                                    width: MediaQuery.of(context).size.width * 0.9,
-                                                    child: Card(
-                                                      child: Padding(
-                                                        padding: const EdgeInsets.all(8.0),
-                                                        child: Column(
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                          children: [
-                                                            Text("Thema: ${data['topic']}"),
-                                                            SizedBox(height: 5),
-                                                            Text("Service: ${data['service']}"),
-                                                            Text("Kategorie: ${data['serviceCategory']}"),
-                                                            Text("Beschreibung: ${data['serviceDescription']}"),
-                                                            SizedBox(height: 5),
-                                                            Text("Preis: ${data['price']} €"),
-                                                            Text("Aktionspreis: ${data['actionPrice']} €"),
-                                                            SizedBox(height: 5),
-                                                            Text("Erstellt am: ${DateFormat('dd.MM.yyyy').format(DateTime.fromMillisecondsSinceEpoch(data['createdAt'].seconds * 1000))}"),
-                                                            Text("Service Startdatum: ${DateFormat('dd.MM.yyyy').format(DateTime.fromMillisecondsSinceEpoch(data['startServiceDate'].seconds * 1000))}")
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                }).toList(),
-                                              ),
-                                            ),
-                                          ]
-                                      ),
-                                    )
-
-                                  ]),
-                                    )
-                                    )
-                                  ],
-                                ),
-                              ),
-                            );
-
-
-          } else {
-              return Scaffold(
-                body: Center(
-                  child: Text('Unternehmensprofil gelöscht.'),
-                ),
-              );
+          final birthdayString = profileData!['birthday'];
+          DateTime? birthday;
+          if (birthdayString != null && birthdayString.isNotEmpty) {
+            final List<String> dateParts = birthdayString.split('.');
+            if (dateParts.length == 3) {
+              birthday = DateTime.parse(dateParts.reversed.join('-'));
             }
           }
-        },
-      ),
-    );
-  }}
 
+          List<Map<String, dynamic>> workingExperience =
+          List<Map<String, dynamic>>.from(
+              profileData!['workingExperience'] ?? []);
+          workingExperience.sort((a, b) {
+            final aFrom = int.parse(a['from'].split('/').reversed.join());
+            final bFrom = int.parse(b['from'].split('/').reversed.join());
+            return bFrom.compareTo(aFrom);
+          });
+
+          return Scaffold(
+            body: SingleChildScrollView(
+              child: Column(
+                children: [
+                  Container(
+                    height:
+                    240, // Dies ist die kombinierte Höhe des Hintergrundbildes und des Profilbildes
+                    child: Stack(
+                      children: [
+                        Stack(
+                          children: [
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: Image(
+                                image: backgroundImage,
+                                height: 200,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top:
+                              80, // 200 ist die Höhe des Hintergrundbildes und 104 ist die Größe des Profilbilds (einschließlich des Rahmens)
+                              left: (MediaQuery.of(context).size.width - 160) /
+                                  2, // Hiermit wird das Profilbild horizontal zentriert
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width:
+                                    160, // Durchmesser des CircleAvatar + 2 * Breite des Rahmens
+                                    height:
+                                    160, // Durchmesser des CircleAvatar + 2 * Breite des Rahmens
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.grey, // Farbe des Rahmens
+                                        width: 2.0, // Breite des Rahmens
+                                      ),
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 50,
+                                      backgroundImage: profileImage,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 55,
+                                    bottom: 0,
+                                    child: IconButton(
+                                      icon: Icon(Icons.add_a_photo),
+                                      color: Colors.white,
+                                      onPressed: () =>
+                                          _showImageOptions('profileImage'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 35,
+                              right: 0,
+                              child: IconButton(
+                                icon: Icon(Icons.add_a_photo),
+                                color: Colors.white,
+                                onPressed: () =>
+                                    _showImageOptions('backgroundImage'),
+                              ),
+                            ),
+                            Positioned(
+                              top: 180,
+                              left: 290,
+                              child: FutureBuilder<Map<String, dynamic>>(
+                                future: fetchCompanyData(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.done) {
+                                    if (snapshot.hasData &&
+                                        snapshot.data!.isNotEmpty) {
+                                      ImageProvider imageProvider;
+                                      if (snapshot
+                                          .data!['companyProfileImage'] !=
+                                          null) {
+                                        imageProvider = NetworkImage(snapshot
+                                            .data!['companyProfileImage']);
+                                      } else {
+                                        imageProvider =
+                                            defaultCompanyImage; // Stellen Sie sicher, dass Sie eine Standardbildvariable haben
+                                      }
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          if (snapshot.data!['type'] ==
+                                              'Betrieb') {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    CompanyNavigator(
+                                                        initialIndex: 4),
+                                              ),
+                                            );
+                                          } else if (snapshot.data!['type'] ==
+                                              'Service Provider') {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ServiceProviderNavigator(),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        child: CircleAvatar(
+                                          backgroundImage: imageProvider,
+                                          radius: 20,
+                                        ),
+                                      );
+                                    } else {
+                                      return GestureDetector(
+                                        onTap: _showCompanyOptions,
+                                        child: CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor: Colors.blue,
+                                          child: Icon(Icons.add,
+                                              color: Colors.white),
+                                        ),
+                                      );
+                                    }
+                                  } else {
+                                    return Container();
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                birthday != null
+                                    ? '${profileData!['firstName'] ?? ''} ${profileData!['lastName'] ?? ''}, ${calculateAge(birthday)}'
+                                    : '${profileData!['firstName'] ?? ''} ${profileData!['lastName'] ?? ''}',
+                                style: TextStyle(
+                                    fontSize: 24, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.edit),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EditAboutMePage(
+                                        profileData: profileData ?? {}),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        Text(
+                            generateJobText(profileData!['currentJob'],
+                                profileData!['industry'], profileData!['city']),
+                            style: TextStyle(color: Colors.grey)),
+                        if (profileData!['profileSlogan'] != null &&
+                            profileData!['profileSlogan']!.isNotEmpty)
+                          Text(profileData!['profileSlogan']!,
+                              style: TextStyle(fontStyle: FontStyle.italic)),
+                        Divider(),
+                        Container(
+                          height: 50,
+                          child: Stack(
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('Berufserfahrung',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                              Positioned(
+                                right: 0,
+                                child: IconButton(
+                                  icon: Icon(Icons.add),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              AddWorkingExperiencePage()),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        workingExperience.isNotEmpty
+                            ? Column(
+                          children:
+                          List<Widget>.from(workingExperience.map(
+                                (e) => e != null
+                                ? Slidable(
+                              key: Key(
+                                  e['workingExperienceId'] ?? ''),
+                              endActionPane: ActionPane(
+                                motion: const BehindMotion(),
+                                children: [
+                                  SlidableAction(
+                                    onPressed: (context) {
+                                      // Bearbeiten
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              EditWorkingExperiencePage(
+                                                  workingExperience:
+                                                  e),
+                                        ),
+                                      ).then(
+                                              (updatedWorkingExperience) {
+                                            if (updatedWorkingExperience !=
+                                                null) {
+                                              setState(() {
+                                                final index =
+                                                workingExperience
+                                                    .indexOf(e);
+                                                workingExperience[
+                                                index] =
+                                                    updatedWorkingExperience;
+                                              });
+                                              FirebaseFirestore.instance
+                                                  .collection('users')
+                                                  .doc(user!.uid)
+                                                  .update({
+                                                'workingExperience':
+                                                workingExperience
+                                              });
+                                            }
+                                          });
+                                    },
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                    icon: Icons.edit,
+                                    label: 'Bearbeiten',
+                                  ),
+                                  SlidableAction(
+                                    onPressed: (context) {
+                                      // Löschen
+                                      setState(() {
+                                        workingExperience.remove(e);
+                                      });
+                                      FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(user!.uid)
+                                          .update({
+                                        'workingExperience':
+                                        workingExperience
+                                      });
+                                    },
+                                    backgroundColor: Colors.red,
+                                    foregroundColor: Colors.white,
+                                    icon: Icons.delete,
+                                    label: 'Löschen',
+                                  ),
+                                ],
+                              ),
+                              child: Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(10),
+                                margin: EdgeInsets.only(bottom: 10),
+                                decoration: BoxDecoration(
+                                  border: null,
+                                  borderRadius:
+                                  BorderRadius.circular(5),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    Text('${e['company'] ?? ''}',
+                                        style: TextStyle(
+                                            fontWeight:
+                                            FontWeight.bold,
+                                            fontSize: 20)),
+                                    Text(
+                                        '${e['from'] ?? ''} - ${e['to'] ?? ''}'),
+                                    Text('${e['job'] ?? ''}'),
+                                    Text(
+                                        '${e['activities'] ?? ''}'),
+                                  ],
+                                ),
+                              ),
+                            )
+                                : Container(),
+                          )),
+                        )
+                            : Text('- Keine Berufserfahrung -',
+                            style: TextStyle(color: Colors.grey[400])),
+                        Divider(),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment
+                              .start, // Dies sorgt dafür, dass die Überschrift linksbündig ist
+                          children: [
+                            Container(
+                              height: 50,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('Kenntnisse',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                            ...skills
+                                .map((skill) => ListTile(
+                              title: Row(
+                                children: [
+                                  Text(
+                                      '•  '), // Bullet Point hinzugefügt
+                                  Expanded(child: Text(skill)),
+                                ],
+                              ),
+                              trailing: IconButton(
+                                icon: Icon(Icons.delete),
+                                onPressed: () {
+                                  setState(() {
+                                    skills.remove(skill);
+                                  });
+                                  updateSkillsInFirestore();
+                                },
+                              ),
+                            ))
+                                .toList(),
+                            TextField(
+                              controller: skillController,
+                              decoration: InputDecoration(
+                                hintText: 'Fügen Sie eine neue Kenntnis hinzu',
+                                suffixIcon: IconButton(
+                                  icon: Icon(Icons.add),
+                                  onPressed: () {
+                                    if (skillController.text.isNotEmpty) {
+                                      setState(() {
+                                        skills.add(skillController.text);
+                                        skillController.clear();
+                                      });
+                                      updateSkillsInFirestore();
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+}

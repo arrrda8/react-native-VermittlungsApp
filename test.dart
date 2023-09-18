@@ -47,7 +47,7 @@ class _AdPageState extends State<AdPage> {
   void initState() {
     super.initState();
     userId = FirebaseAuth.instance.currentUser!.uid;
-    ads = FirebaseFirestore.instance.collection('users/$userId/ads');
+    ads = FirebaseFirestore.instance.collection('privateAds');
   }
 
   _onAddressChanged() {

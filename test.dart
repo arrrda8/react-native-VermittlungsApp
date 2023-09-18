@@ -37,6 +37,7 @@ class _EditAdPageState extends State<EditAdPage> {
   DateTime selectedDate = DateTime.now();
   TextEditingController hourlyRateController = TextEditingController();
   TextEditingController monthlyRateController = TextEditingController();
+  bool _zipCodeChanged = false;
   String _zipCode = '';
   final _zipCodeController = TextEditingController();
   List<String> _addressSuggestions = [];
@@ -74,6 +75,8 @@ class _EditAdPageState extends State<EditAdPage> {
       employmentType = adData['employment'];
       selectedDays = List<String>.from(adData['workingDays'] ?? []);
       selectedDate = (adData['startWorkDate'] as Timestamp).toDate();
+      _zipCodeController.text = adData['location']?.toString() ?? '';
+      _zipCode = adData['location']?.toString() ?? '';
       titleController.text = adData['topic'];
       jobApplicationDescriptionController.text = adData['jobApplicationDescription']?.toString() ?? '';
       hourlyRateController.text = adData['hourWage']?.toString() ?? '';
@@ -235,7 +238,7 @@ class _EditAdPageState extends State<EditAdPage> {
       return 'Bitte geben Sie eine PLZ ein';
     }
 
-    if (!_suggestionChosen) {
+    if (_zipCodeChanged && !_suggestionChosen) {
       return 'Bitte wählen Sie einen Vorschlag aus der Liste';
     }
 
@@ -260,10 +263,15 @@ class _EditAdPageState extends State<EditAdPage> {
   }
 
   _onAddressChanged() {
+    if (_zipCodeController.text != _zipCode) {
+      _zipCodeChanged = true;
+    }
     if (!_isSuggestionSelected && _zipCodeController.text.length > 3) {
       fetchSuggestions(_zipCodeController.text);
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -342,6 +350,7 @@ class _EditAdPageState extends State<EditAdPage> {
                       });
                       _isSuggestionSelected = false;
                     },
+
                   )
                   ).toList(),
                 ],
@@ -547,6 +556,8 @@ class _EditAdPageState extends State<EditAdPage> {
             SnackBar(content: Text('Ein Fehler ist aufgetreten: $error'))
         );
       });
+
+      _zipCodeChanged = false;
     }
   }
 }

@@ -1,26 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:linkmi/adData.dart';
+import 'adData.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io';
 
 bool isIOS = Platform.isIOS;
 bool showHourlyRate = false;
 TextEditingController hourlyRateController = TextEditingController();
 TextEditingController monthlyRateController = TextEditingController();
 
-class EditAdPage extends StatefulWidget {
-  final String privateAdId; //
-
-  EditAdPage({required this.privateAdId});
-
+class AdPage extends StatefulWidget {
   @override
-  _EditAdPageState createState() => _EditAdPageState();
+  _AdPageState createState() => _AdPageState();
 }
 
-class _EditAdPageState extends State<EditAdPage> {
+class _AdPageState extends State<AdPage> {
   final _formKey = GlobalKey<FormState>();
 
   String? userId;
@@ -35,48 +34,26 @@ class _EditAdPageState extends State<EditAdPage> {
   TextEditingController titleController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
   DateTime selectedDate = DateTime.now();
+  bool showHourlyRate = false;
+  TextEditingController hourlyRateController = TextEditingController();
+  TextEditingController monthlyRateController = TextEditingController();
+  String _zipCode = '';
+  final _zipCodeController = TextEditingController();
+  List<String> _addressSuggestions = [];
+  bool _isSuggestionSelected = false;
+
 
   @override
   void initState() {
     super.initState();
     userId = FirebaseAuth.instance.currentUser!.uid;
-    ads = FirebaseFirestore.instance.collection('companyAds');
-    _loadAdData();
-    hourlyRateController.addListener(() {
-      if (hourlyRateController.text.isNotEmpty) {
-        monthlyRateController.clear();
-      }
-    });
-
-    monthlyRateController.addListener(() {
-      if (monthlyRateController.text.isNotEmpty) {
-        hourlyRateController.clear();
-      }
-    });
+    ads = FirebaseFirestore.instance.collection('users/$userId/ads');
   }
 
-  _loadAdData() async {
-    DocumentSnapshot adSnapshot = await ads.doc(widget.privateAdId).get();
-    Map<String, dynamic> adData = adSnapshot.data() as Map<String, dynamic>;
-
-    // Setzen Sie die Formularfelder mit den Daten des Stellenangebots
-    selectedCategory = adData['at'];
-    selectedJob = adData['job'];
-    experience = adData['experienceInYears'];
-    employmentType = adData['employment'];
-    selectedDays =
-    List<String>.from(adData['workingDays'] ?? []);
-    selectedDate = (adData['startWorkDate'] as Timestamp).toDate();
-    titleController.text = adData['topic'];
-    descriptionController.text = adData['description'];
-    hourlyRateController.text =
-        adData['hourWage']?.toString() ?? '';
-    monthlyRateController.text =
-        adData['monthWage']?.toString() ?? '';
-    showWorkDays = selectedDays.isNotEmpty;
-    showHourlyRate = hourlyRateController.text.isNotEmpty ||
-        monthlyRateController.text.isNotEmpty;
-    setState(() {});
+  _onAddressChanged() {
+    if (!_isSuggestionSelected && _zipCodeController.text.length > 3) {
+      fetchSuggestions(_zipCodeController.text);
+    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -85,11 +62,7 @@ class _EditAdPageState extends State<EditAdPage> {
           context: context,
           builder: (BuildContext builder) {
             return Container(
-              height: MediaQuery
-                  .of(context)
-                  .copyWith()
-                  .size
-                  .height / 3,
+              height: MediaQuery.of(context).copyWith().size.height / 3,
               color: Colors.white,
               child: Column(
                 children: [
@@ -122,8 +95,7 @@ class _EditAdPageState extends State<EditAdPage> {
                         });
                       },
                       dateOrder: DatePickerDateOrder.dmy,
-                      maximumDate: DateTime.now().add(Duration(days: 365 * 10)),
-                      // Hier die Änderung
+                      maximumDate: DateTime.now().add(Duration(days: 365 * 10)), // Hier die Änderung
                       minimumDate: DateTime(1900, 1),
                     ),
                   ),
@@ -136,8 +108,7 @@ class _EditAdPageState extends State<EditAdPage> {
         context: context,
         initialDate: selectedDate,
         firstDate: DateTime(1900, 1),
-        lastDate: DateTime.now().add(
-            Duration(days: 365 * 10)), // Und hier die Änderung
+        lastDate: DateTime.now().add(Duration(days: 365 * 10)), // Und hier die Änderung
       );
       if (picked != null && picked != selectedDate) {
         setState(() {
@@ -147,8 +118,8 @@ class _EditAdPageState extends State<EditAdPage> {
     }
   }
 
-  Widget _buildCardDropdown(String hint, List<String> items,
-      String? selectedItem, Function(String?) onChanged) {
+
+  Widget _buildCardDropdown(String hint, List<String> items, String? selectedItem, Function(String?) onChanged) {
     if (isIOS) {
       return _buildCupertinoPicker(hint, items, selectedItem, onChanged);
     } else {
@@ -172,86 +143,93 @@ class _EditAdPageState extends State<EditAdPage> {
                 );
               }).toList(),
             ],
-            onChanged: hint == "Job" && selectedCategory == null
-                ? null
-                : onChanged,
+            onChanged: hint == "Job" && selectedCategory == null ? null : onChanged,
           ),
         ),
       );
     }
   }
 
-  Widget _buildCupertinoPicker(String hint, List<String> items,
-      String? selectedItem, Function(String?) onChanged) {
-    int selectedIndex = items.indexOf(selectedItem ?? '');
-    bool isButtonEnabled = !(hint == "Job" && selectedCategory == null);
-    return Card(
-      child: ListTile(
-        title: Text(hint),
-        trailing: CupertinoButton(
-          child: Text(selectedItem ?? 'Bitte auswählen'),
-          onPressed: isButtonEnabled
-              ? () {
-            showModalBottomSheet(
-              context: context,
-              builder: (BuildContext context) {
-                return Container(
-                  height: 200,
-                  child: CupertinoPicker(
-                    itemExtent: 32.0,
-                    onSelectedItemChanged: (int index) {
-                      onChanged(items[index]);
-                    },
-                    children: List<Widget>.generate(items.length, (int index) {
-                      return Center(child: Text(items[index]));
-                    }),
-                    scrollController: FixedExtentScrollController(
-                        initialItem: selectedIndex >= 0 ? selectedIndex : 0),
-                  ),
-                );
-              },
-            );
-          }
-              : null, // Wenn isButtonEnabled false ist, wird onPressed auf null gesetzt, wodurch der Button deaktiviert wird.
-        ),
-      ),
-    );
+  void resetForm() {
+    titleController.clear();
+    descriptionController.clear();
+    hourlyRateController.clear();
+    monthlyRateController.clear();
+    selectedCategory = null;
+    selectedJob = null;
+    experience = null;
+    employmentType = null;
+    selectedDays.clear();
+    showWorkDays = false;
+    showHourlyRate = false;
+    selectedDate = DateTime.now();
+    _zipCodeController.clear();
+    _addressSuggestions.clear();
+    _isSuggestionSelected = false;
+    setState(() {});
   }
+
+  String? validateZipCode(String? value) {
+    print("Validating zip code: $value");
+
+    if (value == null || value.isEmpty) {
+      return 'Bitte geben Sie eine PLZ ein';
+    }
+
+    // Überprüfen, ob der Text eine gültige PLZ ist (z.B. "12345")
+    bool isValidZipCode = RegExp(r'^\d{5}$').hasMatch(value);
+
+    if (!isValidZipCode) {
+      return 'Bitte geben Sie eine gültige PLZ ein';
+    }
+
+    return null;
+  }
+
+  Future<void> fetchSuggestions(String input) async {
+    final request =
+        'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$input&types=(regions)&components=country:de&key=AIzaSyA5VmY2x0mZYYK6-5PPuU7Im1DEOBT8ju0';
+    final response = await http.get(Uri.parse(request));
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      final predictions = jsonData['predictions'];
+
+      setState(() {
+        _addressSuggestions = predictions.map<String>((prediction) {
+          return prediction['description']?.toString() ?? '';
+        }).toList();
+      });
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Stellenangebot bearbeiten')),
+      appBar: AppBar(title: Text('Anzeige erstellen')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: EdgeInsets.all(16),
           children: [
-            _buildCardDropdown(
-                'Wo?', jobCategories.keys.toList(), selectedCategory, (
-                value) {
+            _buildCardDropdown('Wo?', jobCategories.keys.toList(), selectedCategory, (value) {
               setState(() {
                 selectedCategory = value;
                 selectedJob = null;
               });
             }),
-            _buildCardDropdown('Job', selectedCategory != null
-                ? jobCategories[selectedCategory]!
-                : [], selectedJob, (value) {
+            _buildCardDropdown('Job', selectedCategory != null ? jobCategories[selectedCategory]! : [], selectedJob, (value) {
               setState(() {
                 selectedJob = value;
               });
             }),
-            _buildCardDropdown(
-                'Berufserfahrung', experienceLevels, experience, (
-                value) {
+            _buildCardDropdown('Berufserfahrung', experienceLevels, experience, (value) {
               setState(() {
                 experience = value;
               });
             }),
-            _buildCardDropdown(
-                'Beschäftigung', employmentTypes, employmentType, (
-                value) {
+            _buildCardDropdown('Beschäftigung', employmentTypes, employmentType, (value) {
               setState(() {
                 employmentType = value;
               });
@@ -260,11 +238,43 @@ class _EditAdPageState extends State<EditAdPage> {
               child: ListTile(
                 title: Text('Beginn ab', style: TextStyle(fontSize: 16)),
                 trailing: CupertinoButton(
-                  child: Text(
-                      '${selectedDate.day}.${selectedDate
-                          .month}.${selectedDate.year}'),
+                  child: Text('${selectedDate.day}.${selectedDate.month}.${selectedDate.year}'),
                   onPressed: () => _selectDate(context),
                 ),
+              ),
+            ),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    title: TextFormField(
+                      controller: _zipCodeController,
+                      decoration: InputDecoration(
+                        labelText: 'PLZ',
+                        border: InputBorder.none,  // Fügt einen Border hinzu
+                      ),
+                      validator: validateZipCode,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (value) => _onAddressChanged(),
+                    ),
+                  ),
+                  ..._addressSuggestions.map((suggestion) => ListTile(
+                    title: Text(suggestion),
+                    onTap: () {
+                      _isSuggestionSelected = true;
+                      // Extrahieren Sie nur den PLZ-Teil des Vorschlags
+                      final extractedZip = suggestion.split(' ')[0];
+                      _zipCodeController.text = extractedZip;
+                      _zipCode = extractedZip;
+                      setState(() {
+                        _addressSuggestions.clear();
+                      });
+                      _isSuggestionSelected = false;
+                    },
+                  )
+                  ).toList(),
+                ],
               ),
             ),
 
@@ -275,10 +285,8 @@ class _EditAdPageState extends State<EditAdPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ListTile(
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 10.0, vertical: 0),
-                      title: Text(
-                          'Arbeitstage', style: TextStyle(fontSize: 16)),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 0),
+                      title: Text('Arbeitstage', style: TextStyle(fontSize: 16)),
                       trailing: CupertinoSwitch(
                         value: showWorkDays,
                         onChanged: (bool value) {
@@ -321,8 +329,7 @@ class _EditAdPageState extends State<EditAdPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ListTile(
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 10.0, vertical: 0),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 0),
                       title: Text('Lohn', style: TextStyle(fontSize: 16)),
                       trailing: CupertinoSwitch(
                         value: showHourlyRate,
@@ -338,40 +345,47 @@ class _EditAdPageState extends State<EditAdPage> {
                       ),
                     ),
                     if (showHourlyRate)
-                      TextFormField(
-                        controller: hourlyRateController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        textAlign: TextAlign.right,
-                        enabled: monthlyRateController.text.isEmpty,
-                        decoration: InputDecoration(
-                          labelText: 'Stundenlohn',
-                          suffixText: '€',
-                          suffixStyle: TextStyle(fontSize: 16),
-                        ),
+                      ValueListenableBuilder(
+                        valueListenable: monthlyRateController,
+                        builder: (context, value, child) {
+                          return TextFormField(
+                            controller: hourlyRateController,
+                            enabled: monthlyRateController.text.isEmpty,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            textAlign: TextAlign.right,
+                            decoration: InputDecoration(
+                              labelText: 'Stundenlohn',
+                              suffixText: '€',
+                              suffixStyle: TextStyle(fontSize: 16),
+                            ),
+                          );
+                        },
                       ),
                     if (showHourlyRate)
-                      TextFormField(
-                        controller: monthlyRateController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        textAlign: TextAlign.right,
-                        enabled: hourlyRateController.text.isEmpty,
-                        decoration: InputDecoration(
-                          labelText: 'Monatslohn',
-                          suffixText: '€',
-                          suffixStyle: TextStyle(fontSize: 16),
-                        ),
+                      ValueListenableBuilder(
+                        valueListenable: hourlyRateController,
+                        builder: (context, value, child) {
+                          return TextFormField(
+                            controller: monthlyRateController,
+                            enabled: hourlyRateController.text.isEmpty,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            textAlign: TextAlign.right,
+                            decoration: InputDecoration(
+                              labelText: 'Monatslohn',
+                              suffixText: '€',
+                              suffixStyle: TextStyle(fontSize: 16),
+                            ),
+                          );
+                        },
                       ),
-
                   ],
                 ),
               ),
             ),
+
+
             Card(
               child: ListTile(
                 title: TextFormField(
@@ -414,7 +428,7 @@ class _EditAdPageState extends State<EditAdPage> {
                   _saveToFirestore();
                 }
               },
-              child: Text('Aktualisieren'),
+              child: Text('Speichern'),
             ),
           ],
         ),
@@ -422,51 +436,98 @@ class _EditAdPageState extends State<EditAdPage> {
     );
   }
 
-  void _saveToFirestore() {
-    // Überprüfen, ob die Eingaben gültig sind
-    if (_formKey.currentState!.validate()) {
-      // Hier prüfen wir, ob Stunden- oder Monatslohn gesetzt ist, und setzen entsprechend den Wert oder null.
-      double? hourWage;
-      double? monthWage;
-      if (hourlyRateController.text.isNotEmpty) {
-        hourWage = double.parse(hourlyRateController.text);
-      }
-      if (monthlyRateController.text.isNotEmpty) {
-        monthWage = double.parse(monthlyRateController.text);
-      }
+  Widget _buildCupertinoPicker(String hint, List<String> items, String? selectedItem, Function(String?) onChanged) {
+    int selectedIndex = items.indexOf(selectedItem ?? '');
+    bool isButtonEnabled = !(hint == "Job" && selectedCategory == null);
+    return Card(
+      child: ListTile(
+        title: Text(hint),
+        trailing: CupertinoButton(
+          child: Text(selectedItem ?? 'Bitte auswählen'),
+          onPressed: isButtonEnabled ? () {
+            showModalBottomSheet(
+              context: context,
+              builder: (BuildContext context) {
+                return Container(
+                  height: 200,
+                  child: CupertinoPicker(
+                    itemExtent: 32.0,
+                    onSelectedItemChanged: (int index) {
+                      onChanged(items[index]);
+                    },
+                    children: List<Widget>.generate(items.length, (int index) {
+                      return Center(child: Text(items[index]));
+                    }),
+                    scrollController: FixedExtentScrollController(initialItem: selectedIndex >= 0 ? selectedIndex : 0),
+                  ),
+                );
+              },
+            );
+          } : null, // Wenn isButtonEnabled false ist, wird onPressed auf null gesetzt, wodurch der Button deaktiviert wird.
+        ),
+      ),
+    );
+  }
 
-      // Datenstruktur für Firestore erstellen
+
+  void _saveToFirestore() {
+    if (selectedCategory != null &&
+        selectedJob != null &&
+        titleController.text.isNotEmpty &&
+        descriptionController.text.isNotEmpty) {
+
+      // Datenstruktur für Firestore
       Map<String, dynamic> adData = {
         'at': selectedCategory,
         'job': selectedJob,
         'experienceInYears': experience,
         'employment': employmentType,
+        'startWorkDate': selectedDate,
         'workingDays': selectedDays,
-        'startWorkDate': Timestamp.fromDate(selectedDate),
+        'location': _zipCode,
+        'hourWage': hourlyRateController.text.isNotEmpty ? int.parse(hourlyRateController.text) : null,
+        'monthWage': monthlyRateController.text.isNotEmpty ? int.parse(monthlyRateController.text) : null,
         'topic': titleController.text,
-        'description': descriptionController.text,
-        'hourWage': hourWage,
-        'monthWage': monthWage
+        'jobApplicationDescription': descriptionController.text,
+        'createdAt': Timestamp.now(), // Aktuelles Datum und Uhrzeit
+        'userId': userId,
       };
 
-      // Nicht benötigte Daten entfernen
-      adData.removeWhere((key, value) => value == null);
+      final privateAds = FirebaseFirestore.instance.collection('privateAds');
 
-      // Aktualisieren Sie den bestehenden Eintrag in Firestore
-      ads.doc(widget.privateAdId).update(adData).then((_) {
-        // Erfolgsmeldung zeigen
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Stellenangebot erfolgreich aktualisiert!'))
+      privateAds.add(adData).then((docRef) {
+        print("Document written with ID: ${docRef.id}");
+        privateAds.doc(docRef.id).update({'privateAdId': docRef.id});
+
+        // AlertDialog anzeigen
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Erfolg'),
+              content: Text('Deine Anzeige ist online!'),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Ok'),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Schließt den AlertDialog
+                    resetForm(); // Setzt das Formular zurück
+                  },
+                ),
+              ],
+            );
+          },
         );
-
-        // Zurück zur vorherigen Seite gehen
-        Navigator.pop(context);
       }).catchError((error) {
-        // Fehlerbehandlung
+        print("Error adding document: $error");
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ein Fehler ist aufgetreten: $error'))
+          SnackBar(content: Text('Fehler beim Speichern: $error')),
         );
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Bitte füllen Sie alle Felder aus.')),
+      );
     }
   }
 }

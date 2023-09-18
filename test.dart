@@ -33,7 +33,7 @@ class _EditAdPageState extends State<EditAdPage> {
   List<String> selectedDays = [];
   bool showWorkDays = false;
   TextEditingController titleController = TextEditingController();
-  TextEditingController descriptionController = TextEditingController();
+  TextEditingController jobApplicationDescriptionController = TextEditingController();
   DateTime selectedDate = DateTime.now();
   TextEditingController hourlyRateController = TextEditingController();
   TextEditingController monthlyRateController = TextEditingController();
@@ -75,7 +75,7 @@ class _EditAdPageState extends State<EditAdPage> {
       selectedDays = List<String>.from(adData['workingDays'] ?? []);
       selectedDate = (adData['startWorkDate'] as Timestamp).toDate();
       titleController.text = adData['topic'];
-      descriptionController.text = adData['description']?.toString() ?? '';
+      jobApplicationDescriptionController.text = adData['jobApplicationDescription']?.toString() ?? '';
       hourlyRateController.text = adData['hourWage']?.toString() ?? '';
       monthlyRateController.text = adData['monthWage']?.toString() ?? '';
       showWorkDays = selectedDays.isNotEmpty;
@@ -253,7 +253,7 @@ class _EditAdPageState extends State<EditAdPage> {
 
       setState(() {
         _addressSuggestions = predictions.map<String>((prediction) {
-          return prediction['description']?.toString() ?? '';
+          return prediction['jobApplicationDescription']?.toString() ?? '';
         }).toList();
       });
     }
@@ -471,7 +471,7 @@ class _EditAdPageState extends State<EditAdPage> {
             Card(
               child: ListTile(
                 title: TextFormField(
-                  controller: descriptionController,
+                  controller: jobApplicationDescriptionController,
                   maxLines: 5,
                   decoration: InputDecoration(
                     labelText: 'Beschreibung',
@@ -521,9 +521,10 @@ class _EditAdPageState extends State<EditAdPage> {
         'experienceInYears': experience,
         'employment': employmentType,
         'workingDays': selectedDays,
+        'location': _zipCode,
         'startWorkDate': Timestamp.fromDate(selectedDate),
         'topic': titleController.text,
-        'description': descriptionController.text,
+        'jobApplicationDescription': jobApplicationDescriptionController.text,
         'hourWage': hourWage,
         'monthWage': monthWage
       };

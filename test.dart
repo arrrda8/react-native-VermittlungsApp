@@ -9,35 +9,32 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 
-class EditAdPage extends StatefulWidget {
-  final String privateAdId; //
-
-  EditAdPage({required this.privateAdId});
-
+class CompanyAdPage extends StatefulWidget {
   @override
-  _EditAdPageState createState() => _EditAdPageState();
+  _companyAdPageState createState() => _companyAdPageState();
 }
 
-class _EditAdPageState extends State<EditAdPage> {
+class _companyAdPageState extends State<CompanyAdPage> {
   final _formKey = GlobalKey<FormState>();
 
   String? userId;
   late CollectionReference ads;
-  bool isIOS = Platform.isIOS;
-  bool showHourlyRate = false;
-  bool _suggestionChosen = false;
-  String? selectedCategory;
-  String? selectedJob;
-  String? experience;
-  String? employmentType;
-  List<String> selectedDays = [];
+  String? jobOfferSelectedCategory;
+  String? jobOfferSelectedJob;
+  String? jobOfferExperience;
+  String? jobOfferEmploymentType;
+  List<String> jobOfferSelectedDays = [];
   bool showWorkDays = false;
-  TextEditingController titleController = TextEditingController();
-  TextEditingController jobApplicationDescriptionController = TextEditingController();
-  DateTime selectedDate = DateTime.now();
-  TextEditingController hourlyRateController = TextEditingController();
-  TextEditingController monthlyRateController = TextEditingController();
-  bool _zipCodeChanged = false;
+  TextEditingController jobOfferTitleController = TextEditingController();
+  TextEditingController jobOfferDescriptionController = TextEditingController();
+  DateTime jobOfferSelectedDate = DateTime.now();
+  bool isIOS = Platform.isIOS;
+  bool showJobOfferHourlyRate = false;
+  bool isHourlyRateFieldActive = true;
+  bool isMonthlyRateFieldActive = true;
+  bool _suggestionChosen = false;
+  TextEditingController jobOfferHourlyRateController = TextEditingController();
+  TextEditingController jobOfferMonthlyRateController = TextEditingController();
   String _zipCode = '';
   final _zipCodeController = TextEditingController();
   List<String> _addressSuggestions = [];
@@ -47,50 +44,34 @@ class _EditAdPageState extends State<EditAdPage> {
   void initState() {
     super.initState();
     userId = FirebaseAuth.instance.currentUser!.uid;
-    ads = FirebaseFirestore.instance.collection('privateAds');
-    _loadAdData();
-    hourlyRateController.addListener(() {
-      if (hourlyRateController.text.isNotEmpty) {
-        monthlyRateController.clear();
-      }
+    ads = FirebaseFirestore.instance.collection('companyAds');
+
+    jobOfferHourlyRateController.addListener(() {
+      setState(() {
+        if (jobOfferHourlyRateController.text.isNotEmpty) {
+          isMonthlyRateFieldActive = false;
+        } else {
+          isMonthlyRateFieldActive = true;
+        }
+      });
     });
 
-    monthlyRateController.addListener(() {
-      if (monthlyRateController.text.isNotEmpty) {
-        hourlyRateController.clear();
-      }
+    jobOfferMonthlyRateController.addListener(() {
+      setState(() {
+        if (jobOfferMonthlyRateController.text.isNotEmpty) {
+          isHourlyRateFieldActive = false;
+        } else {
+          isHourlyRateFieldActive = true;
+        }
+      });
     });
   }
 
-  _loadAdData() async {
-    DocumentSnapshot adSnapshot = await ads.doc(widget.privateAdId).get();
-
-    if (adSnapshot.data() != null) {
-      Map<String, dynamic> adData = adSnapshot.data() as Map<String, dynamic>;
-
-      // Setzen Sie die Formularfelder mit den Daten des Stellenangebots
-      selectedCategory = adData['at'];
-      selectedJob = adData['job'];
-      experience = adData['experienceInYears'];
-      employmentType = adData['employment'];
-      selectedDays = List<String>.from(adData['workingDays'] ?? []);
-      selectedDate = (adData['startWorkDate'] as Timestamp).toDate();
-      _zipCodeController.text = adData['location']?.toString() ?? '';
-      _zipCode = adData['location']?.toString() ?? '';
-      titleController.text = adData['topic'];
-      jobApplicationDescriptionController.text = adData['jobApplicationDescription']?.toString() ?? '';
-      hourlyRateController.text = adData['hourWage']?.toString() ?? '';
-      monthlyRateController.text = adData['monthWage']?.toString() ?? '';
-      showWorkDays = selectedDays.isNotEmpty;
-      showHourlyRate = hourlyRateController.text.isNotEmpty ||
-          monthlyRateController.text.isNotEmpty;
-
-      setState(() {});
-    } else {
-      // Hier können Sie eine Fehlermeldung anzeigen oder eine andere Aktion ausführen, wenn die Daten null sind.
+  _onAddressChanged() {
+    if (!_isSuggestionSelected && _zipCodeController.text.length > 3) {
+      fetchSuggestions(_zipCodeController.text);
     }
   }
-
 
   Future<void> _selectDate(BuildContext context) async {
     if (Platform.isIOS) {
@@ -98,11 +79,7 @@ class _EditAdPageState extends State<EditAdPage> {
           context: context,
           builder: (BuildContext builder) {
             return Container(
-              height: MediaQuery
-                  .of(context)
-                  .copyWith()
-                  .size
-                  .height / 3,
+              height: MediaQuery.of(context).copyWith().size.height / 3,
               color: Colors.white,
               child: Column(
                 children: [
@@ -128,15 +105,14 @@ class _EditAdPageState extends State<EditAdPage> {
                   Expanded(
                     child: CupertinoDatePicker(
                       mode: CupertinoDatePickerMode.date,
-                      initialDateTime: selectedDate,
+                      initialDateTime: jobOfferSelectedDate,
                       onDateTimeChanged: (DateTime newDateTime) {
                         setState(() {
-                          selectedDate = newDateTime;
+                          jobOfferSelectedDate = newDateTime;
                         });
                       },
                       dateOrder: DatePickerDateOrder.dmy,
-                      maximumDate: DateTime.now().add(Duration(days: 365 * 10)),
-                      // Hier die Änderung
+                      maximumDate: DateTime.now().add(Duration(days: 365 * 10)), // Hier die Änderung
                       minimumDate: DateTime(1900, 1),
                     ),
                   ),
@@ -147,21 +123,19 @@ class _EditAdPageState extends State<EditAdPage> {
     } else {
       final DateTime? picked = await showDatePicker(
         context: context,
-        initialDate: selectedDate,
+        initialDate: jobOfferSelectedDate,
         firstDate: DateTime(1900, 1),
-        lastDate: DateTime.now().add(
-            Duration(days: 365 * 10)), // Und hier die Änderung
+        lastDate: DateTime.now().add(Duration(days: 365 * 10)), // Und hier die Änderung
       );
-      if (picked != null && picked != selectedDate) {
+      if (picked != null && picked != jobOfferSelectedDate) {
         setState(() {
-          selectedDate = picked;
+          jobOfferSelectedDate = picked;
         });
       }
     }
   }
 
-  Widget _buildCardDropdown(String hint, List<String> items,
-      String? selectedItem, Function(String?) onChanged) {
+  Widget _buildCardDropdown(String hint, List<String> items, String? selectedItem, Function(String?) onChanged) {
     if (isIOS) {
       return _buildCupertinoPicker(hint, items, selectedItem, onChanged);
     } else {
@@ -185,50 +159,27 @@ class _EditAdPageState extends State<EditAdPage> {
                 );
               }).toList(),
             ],
-            onChanged: hint == "Job" && selectedCategory == null
-                ? null
-                : onChanged,
+            onChanged: hint == "Job" && jobOfferSelectedCategory == null ? null : onChanged,
           ),
         ),
       );
     }
   }
 
-  Widget _buildCupertinoPicker(String hint, List<String> items,
-      String? selectedItem, Function(String?) onChanged) {
-    int selectedIndex = items.indexOf(selectedItem ?? '');
-    bool isButtonEnabled = !(hint == "Job" && selectedCategory == null);
-    return Card(
-      child: ListTile(
-        title: Text(hint),
-        trailing: CupertinoButton(
-          child: Text(selectedItem ?? 'Bitte auswählen'),
-          onPressed: isButtonEnabled
-              ? () {
-            showModalBottomSheet(
-              context: context,
-              builder: (BuildContext context) {
-                return Container(
-                  height: 200,
-                  child: CupertinoPicker(
-                    itemExtent: 32.0,
-                    onSelectedItemChanged: (int index) {
-                      onChanged(items[index]);
-                    },
-                    children: List<Widget>.generate(items.length, (int index) {
-                      return Center(child: Text(items[index]));
-                    }),
-                    scrollController: FixedExtentScrollController(
-                        initialItem: selectedIndex >= 0 ? selectedIndex : 0),
-                  ),
-                );
-              },
-            );
-          }
-              : null, // Wenn isButtonEnabled false ist, wird onPressed auf null gesetzt, wodurch der Button deaktiviert wird.
-        ),
-      ),
-    );
+  void resetForm() {
+    jobOfferTitleController.clear();
+    jobOfferDescriptionController.clear();
+    jobOfferHourlyRateController.clear();
+    jobOfferMonthlyRateController.clear();
+    jobOfferSelectedCategory = null;
+    jobOfferSelectedJob = null;
+    jobOfferExperience = null;
+    jobOfferEmploymentType = null;
+    jobOfferSelectedDays.clear();
+    showWorkDays = false;
+    showJobOfferHourlyRate = false;
+    jobOfferSelectedDate = DateTime.now();
+    setState(() {});
   }
 
   String? validateZipCode(String? value) {
@@ -238,7 +189,7 @@ class _EditAdPageState extends State<EditAdPage> {
       return 'Bitte geben Sie eine PLZ ein';
     }
 
-    if (_zipCodeChanged && !_suggestionChosen) {
+    if (!_suggestionChosen) {
       return 'Bitte wählen Sie einen Vorschlag aus der Liste';
     }
 
@@ -256,68 +207,47 @@ class _EditAdPageState extends State<EditAdPage> {
 
       setState(() {
         _addressSuggestions = predictions.map<String>((prediction) {
-          return prediction['jobApplicationDescription']?.toString() ?? '';
+          return prediction['description']?.toString() ?? '';
         }).toList();
       });
     }
   }
 
-  _onAddressChanged() {
-    if (_zipCodeController.text != _zipCode) {
-      _zipCodeChanged = true;
-    }
-    if (!_isSuggestionSelected && _zipCodeController.text.length > 3) {
-      fetchSuggestions(_zipCodeController.text);
-    }
-  }
-
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Stellenangebot bearbeiten')),
+      appBar: AppBar(title: Text('Stellenangebot erstellen')),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: EdgeInsets.all(16),
           children: [
-            _buildCardDropdown(
-                'Wo?', jobCategories.keys.toList(), selectedCategory, (
-                value) {
+            _buildCardDropdown('Wo?', jobCategories.keys.toList(), jobOfferSelectedCategory, (value) {
               setState(() {
-                selectedCategory = value;
-                selectedJob = null;
+                jobOfferSelectedCategory = value;
+                jobOfferSelectedJob = null;
               });
             }),
-            _buildCardDropdown('Job', selectedCategory != null
-                ? jobCategories[selectedCategory]!
-                : [], selectedJob, (value) {
+            _buildCardDropdown('Job', jobOfferSelectedCategory != null ? jobCategories[jobOfferSelectedCategory]! : [], jobOfferSelectedJob, (value) {
               setState(() {
-                selectedJob = value;
+                jobOfferSelectedJob = value;
               });
             }),
-            _buildCardDropdown(
-                'Berufserfahrung', experienceLevels, experience, (
-                value) {
+            _buildCardDropdown('Berufserfahrung', experienceLevels, jobOfferExperience, (value) {
               setState(() {
-                experience = value;
+                jobOfferExperience = value;
               });
             }),
-            _buildCardDropdown(
-                'Beschäftigung', employmentTypes, employmentType, (
-                value) {
+            _buildCardDropdown('Beschäftigung', employmentTypes, jobOfferEmploymentType, (value) {
               setState(() {
-                employmentType = value;
+                jobOfferEmploymentType = value;
               });
             }),
             Card(
               child: ListTile(
                 title: Text('Beginn ab', style: TextStyle(fontSize: 16)),
                 trailing: CupertinoButton(
-                  child: Text(
-                      '${selectedDate.day}.${selectedDate
-                          .month}.${selectedDate.year}'),
+                  child: Text('${jobOfferSelectedDate.day}.${jobOfferSelectedDate.month}.${jobOfferSelectedDate.year}'),
                   onPressed: () => _selectDate(context),
                 ),
               ),
@@ -350,7 +280,6 @@ class _EditAdPageState extends State<EditAdPage> {
                       });
                       _isSuggestionSelected = false;
                     },
-
                   )
                   ).toList(),
                 ],
@@ -363,17 +292,15 @@ class _EditAdPageState extends State<EditAdPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ListTile(
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 10.0, vertical: 0),
-                      title: Text(
-                          'Arbeitstage', style: TextStyle(fontSize: 16)),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 0),
+                      title: Text('Arbeitstage', style: TextStyle(fontSize: 16)),
                       trailing: CupertinoSwitch(
                         value: showWorkDays,
                         onChanged: (bool value) {
                           setState(() {
                             showWorkDays = value;
                             if (!value) {
-                              selectedDays.clear();
+                              jobOfferSelectedDays.clear();
                             }
                           });
                         },
@@ -385,13 +312,13 @@ class _EditAdPageState extends State<EditAdPage> {
                         children: workDays.map((day) {
                           return FilterChip(
                             label: Text(day),
-                            selected: selectedDays.contains(day),
+                            selected: jobOfferSelectedDays.contains(day),
                             onSelected: (bool selected) {
                               setState(() {
                                 if (selected) {
-                                  selectedDays.add(day);
+                                  jobOfferSelectedDays.add(day);
                                 } else {
-                                  selectedDays.remove(day);
+                                  jobOfferSelectedDays.remove(day);
                                 }
                               });
                             },
@@ -409,51 +336,47 @@ class _EditAdPageState extends State<EditAdPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ListTile(
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 10.0, vertical: 0),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 0),
                       title: Text('Lohn', style: TextStyle(fontSize: 16)),
                       trailing: CupertinoSwitch(
-                        value: showHourlyRate,
+                        value: showJobOfferHourlyRate,
                         onChanged: (bool value) {
                           setState(() {
-                            showHourlyRate = value;
+                            showJobOfferHourlyRate = value;
                             if (!value) {
-                              hourlyRateController.clear();
-                              monthlyRateController.clear();
+                              jobOfferHourlyRateController.clear();
+                              jobOfferMonthlyRateController.clear();
                             }
                           });
                         },
                       ),
                     ),
-                    if (showHourlyRate)
+                    if (showJobOfferHourlyRate)
                       TextFormField(
-                        controller: hourlyRateController,
+                        controller: jobOfferHourlyRateController,
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         textAlign: TextAlign.right,
-                        enabled: monthlyRateController.text.isEmpty,
                         decoration: InputDecoration(
                           labelText: 'Stundenlohn',
                           suffixText: '€',
                           suffixStyle: TextStyle(fontSize: 16),
                         ),
+                        enabled: isHourlyRateFieldActive,
                       ),
-                    if (showHourlyRate)
+
+                    if (showJobOfferHourlyRate && jobOfferHourlyRateController.text.isEmpty)
                       TextFormField(
-                        controller: monthlyRateController,
+                        controller: jobOfferMonthlyRateController,
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                         textAlign: TextAlign.right,
-                        enabled: hourlyRateController.text.isEmpty,
                         decoration: InputDecoration(
                           labelText: 'Monatslohn',
                           suffixText: '€',
                           suffixStyle: TextStyle(fontSize: 16),
                         ),
+                        enabled: isMonthlyRateFieldActive,
                       ),
 
                   ],
@@ -463,7 +386,7 @@ class _EditAdPageState extends State<EditAdPage> {
             Card(
               child: ListTile(
                 title: TextFormField(
-                  controller: titleController,
+                  controller: jobOfferTitleController,
                   decoration: InputDecoration(
                     labelText: 'Überschrift',
                     border: InputBorder.none,
@@ -480,7 +403,7 @@ class _EditAdPageState extends State<EditAdPage> {
             Card(
               child: ListTile(
                 title: TextFormField(
-                  controller: jobApplicationDescriptionController,
+                  controller: jobOfferDescriptionController,
                   maxLines: 5,
                   decoration: InputDecoration(
                     labelText: 'Beschreibung',
@@ -502,7 +425,7 @@ class _EditAdPageState extends State<EditAdPage> {
                   _saveToFirestore();
                 }
               },
-              child: Text('Aktualisieren'),
+              child: Text('Speichern'),
             ),
           ],
         ),
@@ -510,54 +433,101 @@ class _EditAdPageState extends State<EditAdPage> {
     );
   }
 
-  void _saveToFirestore() {
-    // Überprüfen, ob die Eingaben gültig sind
-    if (_formKey.currentState!.validate()) {
-      // Hier prüfen wir, ob Stunden- oder Monatslohn gesetzt ist, und setzen entsprechend den Wert oder null.
-      double? hourWage;
-      double? monthWage;
-      if (hourlyRateController.text.isNotEmpty) {
-        hourWage = double.parse(hourlyRateController.text);
-      }
-      if (monthlyRateController.text.isNotEmpty) {
-        monthWage = double.parse(monthlyRateController.text);
-      }
+  Widget _buildCupertinoPicker(String hint, List<String> items, String? selectedItem, Function(String?) onChanged) {
+    int selectedIndex = items.indexOf(selectedItem ?? '');
+    bool isButtonEnabled = !(hint == "Job" && jobOfferSelectedCategory == null);
+    return Card(
+      child: ListTile(
+        title: Text(hint),
+        trailing: CupertinoButton(
+          child: Text(selectedItem ?? 'Bitte auswählen'),
+          onPressed: isButtonEnabled ? () {
+            showModalBottomSheet(
+              context: context,
+              builder: (BuildContext context) {
+                return Container(
+                  height: 200,
+                  child: CupertinoPicker(
+                    itemExtent: 32.0,
+                    onSelectedItemChanged: (int index) {
+                      onChanged(items[index]);
+                    },
+                    children: List<Widget>.generate(items.length, (int index) {
+                      return Center(child: Text(items[index]));
+                    }),
+                    scrollController: FixedExtentScrollController(initialItem: selectedIndex >= 0 ? selectedIndex : 0),
+                  ),
+                );
+              },
+            );
+          } : null, // Wenn isButtonEnabled false ist, wird onPressed auf null gesetzt, wodurch der Button deaktiviert wird.
+        ),
+      ),
+    );
+  }
 
-      // Datenstruktur für Firestore erstellen
+
+  void _saveToFirestore() {
+    if (jobOfferSelectedCategory != null &&
+        jobOfferSelectedJob != null &&
+        jobOfferTitleController.text.isNotEmpty &&
+        jobOfferDescriptionController.text.isNotEmpty) {
+
+      // Datenstruktur für Firestore
       Map<String, dynamic> adData = {
-        'at': selectedCategory,
-        'job': selectedJob,
-        'experienceInYears': experience,
-        'employment': employmentType,
-        'workingDays': selectedDays,
+        'at': jobOfferSelectedCategory,
+        'job': jobOfferSelectedJob,
+        'jobOfferExperienceInYears': jobOfferExperience,
+        'jobOfferEmployment': jobOfferEmploymentType,
+        'startWorkDate': jobOfferSelectedDate,
         'location': _zipCode,
-        'startWorkDate': Timestamp.fromDate(selectedDate),
-        'topic': titleController.text,
-        'jobApplicationDescription': jobApplicationDescriptionController.text,
-        'hourWage': hourWage,
-        'monthWage': monthWage
+        'jobOfferWorkingDays': jobOfferSelectedDays,
+        'jobOfferHourWage': jobOfferHourlyRateController.text.isNotEmpty ? int.parse(jobOfferHourlyRateController.text) : null,
+        'jobOfferMonthWage': jobOfferMonthlyRateController.text.isNotEmpty ? int.parse(jobOfferMonthlyRateController.text) : null,
+        'jobOfferTopic': jobOfferTitleController.text,
+        'jobOfferDescription': jobOfferDescriptionController.text,
+        'jobOfferCreatedAt': Timestamp.now(), // Aktuelles Datum und Uhrzeit
+        'userId': userId,
       };
 
-      // Nicht benötigte Daten entfernen
-      adData.removeWhere((key, value) => value == null);
+      ads.add(adData).then((docRef) {
+        print("Document written with ID: ${docRef.id}");
 
-      // Aktualisieren Sie den bestehenden Eintrag in Firestore
-      ads.doc(widget.privateAdId).update(adData).then((_) {
-        // Erfolgsmeldung zeigen
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Stellenangebot erfolgreich aktualisiert!'))
+        // Aktualisieren Sie das Dokument mit seiner eigenen ID
+        ads.doc(docRef.id).update({'companyAdId': docRef.id});
+
+        // AlertDialog anzeigen
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Erfolg'),
+              content: Text('Deine Anzeige ist online!'),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Ok'),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Schließt den AlertDialog
+                    resetForm(); // Setzt das Formular zurück
+                    Navigator.of(context).pop(); // Navigiert zurück zur vorherigen Seite
+                  },
+                ),
+              ],
+            );
+          },
         );
-
-        // Zurück zur vorherigen Seite gehen
-        Navigator.pop(context);
       }).catchError((error) {
-        // Fehlerbehandlung
+        print("Error adding document: $error");
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ein Fehler ist aufgetreten: $error'))
+          SnackBar(content: Text('Fehler beim Speichern: $error')),
         );
       });
-
-      _zipCodeChanged = false;
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Bitte füllen Sie alle Felder aus.')),
+      );
     }
   }
 }
+
+

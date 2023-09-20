@@ -67,6 +67,11 @@ class _companyAdPageState extends State<CompanyAdPage> {
     });
   }
 
+  Future<Map<String, dynamic>> getCompanyInfo(String userId) async {
+    DocumentSnapshot companyDoc = await FirebaseFirestore.instance.collection('users').doc(userId).collection('company').doc(userId).get();
+    return companyDoc.data() as Map<String, dynamic>;
+  }
+
   _onAddressChanged() {
     if (!_isSuggestionSelected && _zipCodeController.text.length > 3) {
       fetchSuggestions(_zipCodeController.text);
@@ -467,7 +472,7 @@ class _companyAdPageState extends State<CompanyAdPage> {
   }
 
 
-  void _saveToFirestore() {
+  void _saveToFirestore() async {
     if (jobOfferSelectedCategory != null &&
         jobOfferSelectedJob != null &&
         jobOfferTitleController.text.isNotEmpty &&
@@ -489,6 +494,10 @@ class _companyAdPageState extends State<CompanyAdPage> {
         'jobOfferCreatedAt': Timestamp.now(), // Aktuelles Datum und Uhrzeit
         'userId': userId,
       };
+
+      Map<String, dynamic> companyInfo = await getCompanyInfo(userId!);
+      adData['companyName'] = companyInfo['companyName'];
+      adData['companyProfileImage'] = companyInfo['companyProfileImage'];
 
       ads.add(adData).then((docRef) {
         print("Document written with ID: ${docRef.id}");

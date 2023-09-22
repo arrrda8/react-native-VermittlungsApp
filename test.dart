@@ -23,8 +23,6 @@ class CompanyProfilePage extends StatefulWidget {
   _CompanyProfilePageState createState() => _CompanyProfilePageState();
 }
 
-int _currentIndex = 0;
-
 class _CompanyProfilePageState extends State<CompanyProfilePage> {
   User? user;
   Map<String, dynamic>? profileData;
@@ -39,21 +37,11 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
   Future<Map<String, dynamic>?> fetchData() async {
     if (user != null) {
       try {
-        DocumentSnapshot doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .collection('company')
-            .doc(user!.uid)
-            .get();
+        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('company').doc(user!.uid).get();
         return doc.data() as Map<String, dynamic>?;
       } catch (e) {
         print(e);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),),);
         return null;
       }
     }
@@ -77,8 +65,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
   }
 
   Future<LatLng?> getCoordinatesFromAddress(String address) async {
-    final url =
-        'https://maps.googleapis.com/maps/api/geocode/json?address=$address&key=AIzaSyA5VmY2x0mZYYK6-5PPuU7Im1DEOBT8ju0';
+    final url = 'https://maps.googleapis.com/maps/api/geocode/json?address=$address&key=AIzaSyA5VmY2x0mZYYK6-5PPuU7Im1DEOBT8ju0';
     final response = await http.get(Uri.parse(url));
     final jsonData = json.decode(response.body);
 
@@ -104,10 +91,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
   Future<Map<String, dynamic>?> fetchPrivateProfileData() async {
     if (user != null) {
       try {
-        DocumentSnapshot doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .get();
+        DocumentSnapshot doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
         return doc.data() as Map<String, dynamic>?;
       } catch (e) {
         print(e);
@@ -120,27 +104,14 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
   Future<void> uploadImage(File file, String imageType) async {
     try {
       // Speichern Sie das Bild im richtigen Ordner
-      await FirebaseStorage.instance
-          .ref('images/${user!.uid}/$imageType')
-          .putFile(file);
-      final String url = await FirebaseStorage.instance
-          .ref('images/${user!.uid}/$imageType')
-          .getDownloadURL();
+      await FirebaseStorage.instance.ref('images/${user!.uid}/$imageType').putFile(file);
+      final String url = await FirebaseStorage.instance.ref('images/${user!.uid}/$imageType').getDownloadURL();
 
       // Aktualisieren Sie die richtige Firestore-Sammlung basierend auf dem Bildtyp
-      if (imageType == 'companyProfileImage' ||
-          imageType == 'companyBackgroundImage') {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .collection('company')
-            .doc(user!.uid)
-            .update({imageType: url});
+      if (imageType == 'companyProfileImage' || imageType == 'companyBackgroundImage') {
+        await FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('company').doc(user!.uid).update({imageType: url});
       } else {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .update({imageType: url});
+        await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({imageType: url});
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -150,68 +121,40 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
       );
     } catch (e) {
       print(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),),);
     }
   }
 
   Future<void> deleteImage(String imageType) async {
     try {
       // Bild aus Firebase Storage löschen
-      await FirebaseStorage.instance
-          .ref('images/${user!.uid}/$imageType')
-          .delete();
+      await FirebaseStorage.instance.ref('images/${user!.uid}/$imageType').delete();
 
       // Bild-URL aus Firestore löschen
-      if (imageType == 'companyProfileImage' ||
-          imageType == 'companyBackgroundImage') {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .collection('company')
-            .doc(user!.uid)
-            .update({imageType: FieldValue.delete()});
+      if (imageType == 'companyProfileImage' || imageType == 'companyBackgroundImage') {
+        await FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('company').doc(user!.uid).update({imageType: FieldValue.delete()});
       } else {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .update({imageType: FieldValue.delete()});
+        await FirebaseFirestore.instance.collection('users').doc(user!.uid).update({imageType: FieldValue.delete()});
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Bild erfolgreich gelöscht.'),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bild erfolgreich gelöscht.'),),);
     } catch (e) {
       print(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.'),),);
     }
   }
 
   void _showImageOptions(String imageType) async {
     final bool isProfileImage = imageType == 'companyProfileImage';
-    final bool imageExists =
-        profileData![imageType] != null && profileData![imageType]!.isNotEmpty;
+    final bool imageExists = profileData![imageType] != null && profileData![imageType]!.isNotEmpty;
 
     void handleImageSelection() async {
-      final pickedFile =
-      await ImagePicker().pickImage(source: ImageSource.gallery);
+      final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         final File originalFile = File(pickedFile.path);
         final CroppedFile? croppedFile = await _cropImage(originalFile);
         if (croppedFile != null) {
-          final File croppedFinalFile =
-          File(croppedFile.path); // Konvertieren Sie CroppedFile in File
+          final File croppedFinalFile = File(croppedFile.path);
           await uploadImage(croppedFinalFile, imageType);
         }
       }
@@ -224,13 +167,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
           title: Text(isProfileImage ? 'Profilbild' : 'Hintergrundbild'),
           actions: [
             CupertinoActionSheetAction(
-              child: Text(imageExists
-                  ? (isProfileImage
-                  ? 'Profilbild wechseln'
-                  : 'Hintergrundbild wechseln')
-                  : (isProfileImage
-                  ? 'Profilbild hinzufügen'
-                  : 'Hintergrundbild hinzufügen')),
+              child: Text(imageExists ? (isProfileImage ? 'Profilbild wechseln' : 'Hintergrundbild wechseln') : (isProfileImage ? 'Profilbild hinzufügen' : 'Hintergrundbild hinzufügen')),
               onPressed: () {
                 Navigator.pop(context);
                 handleImageSelection();
@@ -238,9 +175,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
             ),
             if (imageExists)
               CupertinoActionSheetAction(
-                child: Text(isProfileImage
-                    ? 'Profilbild löschen'
-                    : 'Hintergrundbild löschen'),
+                child: Text(isProfileImage ? 'Profilbild löschen' : 'Hintergrundbild löschen'),
                 isDestructiveAction: true,
                 onPressed: () {
                   Navigator.pop(context);
@@ -263,13 +198,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: Text(imageExists
-                  ? (isProfileImage
-                  ? 'Profilbild wechseln'
-                  : 'Hintergrundbild wechseln')
-                  : (isProfileImage
-                  ? 'Profilbild hinzufügen'
-                  : 'Hintergrundbild hinzufügen')),
+              title: Text(imageExists ? (isProfileImage ? 'Profilbild wechseln' : 'Hintergrundbild wechseln') : (isProfileImage ? 'Profilbild hinzufügen' : 'Hintergrundbild hinzufügen')),
               onTap: () {
                 Navigator.pop(context);
                 handleImageSelection();
@@ -324,43 +253,31 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
     if (shouldDelete == true) {
       try {
         // Löschen Sie alle Dokumente aus der 'company' Sammlung
-        QuerySnapshot companyDocs = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .collection('company')
-            .get();
+        QuerySnapshot companyDocs = await FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('company').get();
         for (DocumentSnapshot doc in companyDocs.docs) {
           await doc.reference.delete();
         }
 
         // Löschen Sie alle Dokumente aus der 'media' Sammlung
-        QuerySnapshot mediaDocs = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user!.uid)
-            .collection('media')
-            .get();
+        QuerySnapshot mediaDocs = await FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('media').get();
         for (DocumentSnapshot doc in mediaDocs.docs) {
           await doc.reference.delete();
         }
 
         // Überprüfen Sie, ob companyProfileImage existiert, bevor Sie versuchen, es zu löschen
-        Reference companyProfileImageRef = FirebaseStorage.instance
-            .ref('images/${user!.uid}/companyProfileImage');
+        Reference companyProfileImageRef = FirebaseStorage.instance.ref('images/${user!.uid}/companyProfileImage');
         if ((await companyProfileImageRef.getMetadata()).updated != null) {
           await companyProfileImageRef.delete();
         }
 
         // Überprüfen Sie, ob companyBackgroundImage existiert, bevor Sie versuchen, es zu löschen
-        Reference companyBackgroundImageRef = FirebaseStorage.instance
-            .ref('images/${user!.uid}/companyBackgroundImage');
+        Reference companyBackgroundImageRef = FirebaseStorage.instance.ref('images/${user!.uid}/companyBackgroundImage');
         if ((await companyBackgroundImageRef.getMetadata()).updated != null) {
           await companyBackgroundImageRef.delete();
         }
 
         // Löschen Sie alle Dateien im 'medien' Ordner
-        ListResult medienFiles = await FirebaseStorage.instance
-            .ref('images/${user!.uid}/medien')
-            .listAll();
+        ListResult medienFiles = await FirebaseStorage.instance.ref('images/${user!.uid}/medien').listAll();
         for (Reference file in medienFiles.items) {
           await file.delete();
         }
@@ -379,7 +296,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
     }
   }
 
-  void _showMenuOptions() {
+  void showMenuOptions() {
     showCupertinoModalPopup(
       context: context,
       builder: (context) => CupertinoActionSheet(
@@ -443,12 +360,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
         },
         child: StreamBuilder<DocumentSnapshot>(
           // stream: FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('company').doc(user!.uid).snapshots(),
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(user!.uid)
-              .collection('company')
-              .doc(user!.uid)
-              .snapshots(),
+          stream: FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('company').doc(user!.uid).snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Scaffold(
@@ -614,7 +526,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                 ),
                                 IconButton(
                                   icon: Icon(Icons.edit),
-                                  onPressed: _showMenuOptions,
+                                  onPressed: showMenuOptions,
                                 ),
                               ],
                             ),
@@ -681,15 +593,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                         children: [
                                           TableRow(
                                             children: [
-                                              for (var day in [
-                                                'Mo',
-                                                'Di',
-                                                'Mi',
-                                                'Do',
-                                                'Fr',
-                                                'Sa',
-                                                'So'
-                                              ])
+                                              for (var day in ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'])
                                                 Center(
                                                     child: Text(day,
                                                         style: TextStyle(
@@ -700,15 +604,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                           ),
                                           TableRow(
                                             children: [
-                                              for (var fullDay in [
-                                                'Montag',
-                                                'Dienstag',
-                                                'Mittwoch',
-                                                'Donnerstag',
-                                                'Freitag',
-                                                'Samstag',
-                                                'Sonntag'
-                                              ])
+                                              for (var fullDay in ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'])
                                                 Center(
                                                     child: Text(openingHoursMap[
                                                     fullDay]
@@ -718,39 +614,13 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                           ),
                                           TableRow(
                                             children: [
-                                              for (var fullDay in [
-                                                'Montag',
-                                                'Dienstag',
-                                                'Mittwoch',
-                                                'Donnerstag',
-                                                'Freitag',
-                                                'Samstag',
-                                                'Sonntag'
-                                              ])
-                                                Center(
-                                                    child: openingHoursMap[
-                                                    fullDay] !=
-                                                        null
-                                                        ? Text('-')
-                                                        : Text('-'))
-                                            ],
+                                              for (var fullDay in ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'])
+                                                Center(child: openingHoursMap[fullDay] != null ? Text('-') : Text('-'))],
                                           ),
                                           TableRow(
                                             children: [
-                                              for (var fullDay in [
-                                                'Montag',
-                                                'Dienstag',
-                                                'Mittwoch',
-                                                'Donnerstag',
-                                                'Freitag',
-                                                'Samstag',
-                                                'Sonntag'
-                                              ])
-                                                Center(
-                                                    child: Text(
-                                                        openingHoursMap[fullDay]
-                                                        ?['endTime'] ??
-                                                            '-'))
+                                              for (var fullDay in ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'])
+                                                Center(child: Text(openingHoursMap[fullDay]?['endTime'] ?? '-'))
                                             ],
                                           ),
                                         ],
@@ -778,8 +648,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                   CircularProgressIndicator());
                                             } else if (snapshot.hasError) {
                                               return Center(
-                                                  child: Text(
-                                                      'Fehler beim Abrufen der Koordinaten.'));
+                                                  child: Text('Fehler beim Abrufen der Koordinaten.'));
                                             } else if (snapshot.data != null) {
                                               return GoogleMap(
                                                 initialCameraPosition:
@@ -789,18 +658,14 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                 ),
                                                 markers: {
                                                   Marker(
-                                                    markerId: MarkerId(
-                                                        'companyLocation'),
+                                                    markerId: MarkerId('companyLocation'),
                                                     position: snapshot.data!,
-                                                    infoWindow: InfoWindow(
-                                                        title: 'Unternehmen'),
+                                                    infoWindow: InfoWindow(title: 'Unternehmen'),
                                                   ),
                                                 },
                                               );
                                             } else {
-                                              return Center(
-                                                  child: Text(
-                                                      'Adresse nicht gefunden.'));
+                                              return Center(child: Text('Adresse nicht gefunden.'));
                                             }
                                           },
                                         ),
@@ -813,33 +678,19 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                     children: [
                                       Expanded(
                                         child: StreamBuilder<QuerySnapshot>(
-                                          stream: FirebaseFirestore.instance
-                                              .collection('users')
-                                              .doc(user!.uid)
-                                              .collection('media')
-                                              .orderBy('timestamp',
-                                              descending:
-                                              true) // Neueste Bilder zuerst
-                                              .snapshots(),
+                                          stream: FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('media').orderBy('timestamp', descending: true).snapshots(),
                                           builder: (context, snapshot) {
-                                            if (snapshot.connectionState ==
-                                                ConnectionState.waiting) {
+                                            if (snapshot.connectionState == ConnectionState.waiting) {
                                               return Center(
-                                                  child:
-                                                  CircularProgressIndicator());
+                                                  child: CircularProgressIndicator());
                                             } else if (snapshot.hasError) {
                                               return Center(
-                                                  child: Text(
-                                                      'Fehler beim Abrufen der Medien.'));
+                                                  child: Text('Fehler beim Abrufen der Medien.'));
                                             } else if (snapshot.hasData) {
-                                              final mediaData = snapshot
-                                                  .data!.docs
-                                                  .map((doc) => doc.data()
-                                              as Map<String, dynamic>)
-                                                  .toList();
+                                              final mediaData = snapshot.data!.docs.map((doc) => doc.data()
+                                              as Map<String, dynamic>).toList();
                                               return GridView.builder(
-                                                gridDelegate:
-                                                SliverGridDelegateWithFixedCrossAxisCount(
+                                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                                   crossAxisCount: 3,
                                                   crossAxisSpacing: 2.0,
                                                   mainAxisSpacing: 2.0,
@@ -855,27 +706,11 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                               CupertinoActionSheet(
                                                                 actions: [
                                                                   CupertinoActionSheetAction(
-                                                                    child: Text(
-                                                                        'Löschen'),
+                                                                    child: Text('Löschen'),
                                                                     isDestructiveAction:
                                                                     true,
                                                                     onPressed: () {
-                                                                      // Hier den Code zum Löschen des Bildes hinzufügen
-                                                                      FirebaseFirestore
-                                                                          .instance
-                                                                          .collection(
-                                                                          'users')
-                                                                          .doc(user!
-                                                                          .uid)
-                                                                          .collection(
-                                                                          'media')
-                                                                          .doc(snapshot
-                                                                          .data!
-                                                                          .docs[
-                                                                      index]
-                                                                          .id)
-                                                                          .delete();
-
+                                                                      FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('media').doc(snapshot.data!.docs[index].id).delete();
                                                                       Navigator.pop(
                                                                           context);
                                                                     },
@@ -883,8 +718,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                                 ],
                                                                 cancelButton:
                                                                 CupertinoActionSheetAction(
-                                                                  child: Text(
-                                                                      'Abbrechen'),
+                                                                  child: Text('Abbrechen'),
                                                                   onPressed: () {
                                                                     Navigator.pop(
                                                                         context);
@@ -899,34 +733,14 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                           builder: (context) =>
                                                               Column(
                                                                 mainAxisSize:
-                                                                MainAxisSize
-                                                                    .min,
+                                                                MainAxisSize.min,
                                                                 children: [
                                                                   ListTile(
-                                                                    leading: Icon(
-                                                                        Icons
-                                                                            .delete),
-                                                                    title: Text(
-                                                                        'Löschen'),
+                                                                    leading: Icon(Icons.delete),
+                                                                    title: Text('Löschen'),
                                                                     onTap: () {
-                                                                      // Hier den Code zum Löschen des Bildes hinzufügen
-                                                                      FirebaseFirestore
-                                                                          .instance
-                                                                          .collection(
-                                                                          'users')
-                                                                          .doc(user!
-                                                                          .uid)
-                                                                          .collection(
-                                                                          'media')
-                                                                          .doc(snapshot
-                                                                          .data!
-                                                                          .docs[
-                                                                      index]
-                                                                          .id)
-                                                                          .delete();
-
-                                                                      Navigator.pop(
-                                                                          context);
+                                                                      FirebaseFirestore.instance.collection('users').doc(user!.uid).collection('media').doc(snapshot.data!.docs[index].id).delete();
+                                                                      Navigator.pop(context);
                                                                     },
                                                                   ),
                                                                 ],
@@ -935,12 +749,9 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                       }
                                                     },
                                                     child: ZoomOverlay(
-                                                      maxScale:
-                                                      2.5, // Maximale Zoomstufe
-                                                      minScale:
-                                                      1.0, // Minimale Zoomstufe
-                                                      child: Image.network(
-                                                          mediaData[index]
+                                                      maxScale: 2.5,
+                                                      minScale: 1.0,
+                                                      child: Image.network(mediaData[index]
                                                           ['imageUrl'],
                                                           fit: BoxFit.cover),
                                                     ),
@@ -948,30 +759,22 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                 },
                                               );
                                             } else {
-                                              return Center(
-                                                  child: Text(
-                                                      'Keine Medien gefunden.'));
+                                              return Center(child: Text('Keine Medien gefunden.'));
                                             }
                                           },
                                         ),
                                       ),
                                       SizedBox(
-                                          height:
-                                          20) // Ein bisschen Abstand zum unteren Rand
+                                          height: 20) 
                                     ],
                                   ),
                                 ),
                                 // Für den Tab "Anzeigen"
                                 StreamBuilder<QuerySnapshot>(
-                                    stream: FirebaseFirestore.instance
-                                        .collection('ads')
-                                        .where('userId', isEqualTo: userId)
-                                        .where('adType', isEqualTo: 'companyAd')
-                                        .snapshots(),
+                                    stream: FirebaseFirestore.instance.collection('ads').where('userId', isEqualTo: userId).where('adType', isEqualTo: 'companyAd').snapshots(),
                                     builder: (BuildContext context,
                                         AsyncSnapshot<QuerySnapshot> snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
                                         return CircularProgressIndicator();
                                       }
 
@@ -979,8 +782,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                         return Text("Fehler: ${snapshot.error}");
                                       }
 
-                                      List<DocumentSnapshot> servicesListAds =
-                                          snapshot.data!.docs;
+                                      List<DocumentSnapshot> servicesListAds = snapshot.data!.docs;
 
                                       return SingleChildScrollView(
                                         child: Column(
@@ -992,37 +794,18 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                               child: Column(
                                                 children:
                                                 servicesListAds.map((data) {
-                                                  return FutureBuilder<
-                                                      DocumentSnapshot>(
-                                                    future: FirebaseFirestore
-                                                        .instance
-                                                        .collection('users')
-                                                        .doc(data['userId'])
-                                                        .collection('company')
-                                                        .doc(data['userId'])
-                                                        .get(),
+                                                  return FutureBuilder<DocumentSnapshot>(
+                                                    future: FirebaseFirestore.instance.collection('users').doc(data['userId']).collection('company').doc(data['userId']).get(),
                                                     builder: (BuildContext
                                                     context,
-                                                        AsyncSnapshot<
-                                                            DocumentSnapshot>
-                                                        snapshot) {
-                                                      if (snapshot
-                                                          .connectionState ==
-                                                          ConnectionState.done) {
+                                                        AsyncSnapshot<DocumentSnapshot>snapshot) {
+                                                      if (snapshot.connectionState == ConnectionState.done) {
                                                         if (snapshot.hasError) {
-                                                          return Text(
-                                                              "Fehler: ${snapshot.error}");
+                                                          return Text("Fehler: ${snapshot.error}");
                                                         }
 
-                                                        Map<String, dynamic>?
-                                                        userData =
-                                                        snapshot.data?.data()
-                                                        as Map<String,
-                                                            dynamic>?;
-                                                        String?
-                                                        companyProfileImageUrl =
-                                                        userData?[
-                                                        'companyProfileImage'];
+                                                        Map<String, dynamic>?userData = snapshot.data?.data() as Map<String, dynamic>?;
+                                                        String?companyProfileImageUrl = userData?['companyProfileImage'];
 
                                                         return Slidable(
                                                           key: ValueKey(
@@ -1061,8 +844,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                                           TargetPlatform
                                                                               .iOS) {
                                                                         return CupertinoAlertDialog(
-                                                                          title: Text(
-                                                                              'Löschen bestätigen'),
+                                                                          title: Text('Löschen bestätigen'),
                                                                           content:
                                                                           Text('Möchten Sie dieses Stellenangebot wirklich löschen?'),
                                                                           actions: <Widget>[
@@ -1094,8 +876,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                                         );
                                                                       } else {
                                                                         return AlertDialog(
-                                                                          title: Text(
-                                                                              'Löschen bestätigen'),
+                                                                          title: Text('Löschen bestätigen'),
                                                                           content:
                                                                           Text('Möchten Sie dieses Stellenangebot wirklich löschen?'),
                                                                           actions: <Widget>[
@@ -1158,29 +939,18 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                                                               );
                                                             },
                                                             child: Container(
-                                                              width: MediaQuery.of(
-                                                                  context)
-                                                                  .size
-                                                                  .width *
-                                                                  0.9,
+                                                              width: MediaQuery.of(context).size.width * 0.9,
                                                               child: Card(
                                                                 child: Padding(
                                                                   padding:
-                                                                  const EdgeInsets
-                                                                      .all(
-                                                                      8.0),
+                                                                  const EdgeInsets.all(8.0),
                                                                   child: Row(
                                                                     children: [
                                                                       CircleAvatar(
-                                                                        backgroundImage:
-                                                                        NetworkImage(companyProfileImageUrl ??
-                                                                            ''),
-                                                                        radius:
-                                                                        30.0,
+                                                                        backgroundImage: NetworkImage(companyProfileImageUrl ?? ''),
+                                                                        radius: 30.0,
                                                                       ),
-                                                                      SizedBox(
-                                                                          width:
-                                                                          10),
+                                                                      SizedBox(width: 10),
                                                                       Expanded(
                                                                         child:
                                                                         Column(
